@@ -73,6 +73,7 @@ class CAR(Platforms):
     "JEEP GRAND CHEROKEE V6 2018",
     [ChryslerCarDocs("Jeep Grand Cherokee 2016-18", video_link="https://www.youtube.com/watch?v=eLR9o2JkuRk")],
     ChryslerCarSpecs(mass=1778., wheelbase=2.71, steerRatio=16.7),
+    dbc_dict=dbc_dict('chrysler_pacifica_2017_hybrid_generated', 'chrysler_jeep_grand_cherokee_2017_summit_radar', 'chrysler_pacifica_2017_hybrid_private_fusion')
   )
 
   JEEP_GRAND_CHEROKEE_2019 = ChryslerPlatformConfig(  # includes 2020 Trailhawk
