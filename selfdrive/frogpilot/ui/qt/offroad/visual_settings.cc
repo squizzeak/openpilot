@@ -138,7 +138,7 @@ FrogPilotVisualsPanel::FrogPilotVisualsPanel(SettingsWindow *parent) : FrogPilot
         for (auto &[key, toggle] : toggles) {
           std::set<QString> modifiedCustomOnroadUIKeys = customOnroadUIKeys;
 
-          if (!hasOpenpilotLongitudinal && !hasAutoTune) {
+          if (!hasAutoTune) {
             modifiedCustomOnroadUIKeys.erase("DeveloperUI");
           }
 
@@ -221,9 +221,9 @@ FrogPilotVisualsPanel::FrogPilotVisualsPanel(SettingsWindow *parent) : FrogPilot
         for (auto &[key, toggle] : toggles) {
           std::set<QString> modifiedModelUIKeysKeys = modelUIKeys;
 
-          if (!hasOpenpilotLongitudinal) {
+          /* if (!hasOpenpilotLongitudinal) {
             modifiedModelUIKeysKeys.erase("HideLeadMarker");
-          }
+          } */
 
           toggle->setVisible(modifiedModelUIKeysKeys.find(key.c_str()) != modifiedModelUIKeysKeys.end());
         }
