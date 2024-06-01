@@ -914,10 +914,6 @@ FrogPilotVisualsPanel::FrogPilotVisualsPanel(SettingsWindow *parent) : FrogPilot
         for (auto &[key, toggle] : toggles) {
           std::set<QString> modifiedModelUIKeysKeys = modelUIKeys;
 
-          if (!hasOpenpilotLongitudinal || disableOpenpilotLongitudinal) {
-            modifiedModelUIKeysKeys.erase("HideLeadMarker");
-          }
-
           toggle->setVisible(modifiedModelUIKeysKeys.find(key.c_str()) != modifiedModelUIKeysKeys.end());
         }
       });
