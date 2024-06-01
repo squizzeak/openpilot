@@ -695,7 +695,7 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
     update_model(s, model, sm["uiPlan"].getUiPlan());
     drawLaneLines(painter, s, v_ego);
 
-    if (s->scene.longitudinal_control && sm.rcv_frame("radarState") > s->scene.started_frame && !s->scene.hide_lead_marker) {
+    if (sm.rcv_frame("radarState") > s->scene.started_frame && !s->scene.hide_lead_marker) {
       auto radar_state = sm["radarState"].getRadarState();
       update_leads(s, radar_state, model.getPosition());
       auto lead_one = radar_state.getLeadOne();
