@@ -84,12 +84,14 @@ class CarState(CarStateBase):
     ret.cruiseState.nonAdaptive = cp_cruise.vl["DAS_4"]["ACC_STATE"] in (1, 2)  # 1 NormalCCOn and 2 NormalCCSet
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
+    self.lkas_heartbit = cp_cam.vl["LKAS_HEARTBIT"]
 
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message
       self.auto_high_beam = cp_cam.vl["DAS_6"]['AUTO_HIGH_BEAM_ON']
       ret.steerFaultTemporary = cp.vl["EPS_3"]["DASM_FAULT"] == 1
     else:
+      # self.auto_high_beam = cp_cam.vl["LKAS_HEARTBIT"]['AUTO_HIGH_BEAM']
       ret.steerFaultTemporary = cp.vl["EPS_2"]["LKAS_TEMPORARY_FAULT"] == 1
       ret.steerFaultPermanent = cp.vl["EPS_2"]["LKAS_STATE"] == 4
 
@@ -108,7 +110,7 @@ class CarState(CarStateBase):
     if self.CP.carFingerprint in RAM_CARS:
       self.lkas_enabled = cp.vl["Center_Stack_2"]["LKAS_Button"] or cp.vl["Center_Stack_1"]["LKAS_Button"]
     else:
-      self.lkas_enabled = cp.vl["TRACTION_BUTTON"]["TOGGLE_LKAS"] == 1
+      self.lkas_enabled = not self.lkas_heartbit["LKAS_DISABLED"]
 
     return ret, fp_ret
 
@@ -164,5 +166,11 @@ class CarState(CarStateBase):
 
     if CP.carFingerprint in RAM_CARS:
       messages += CarState.get_cruise_messages()
+    else:
+      # LKAS_HEARTBIT data needs to be forwarded!
+      forward_lkas_heartbit_messages = [
+        ("LKAS_HEARTBIT", 10),
+      ]
+      messages += forward_lkas_heartbit_messages
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, 2)
