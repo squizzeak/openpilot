@@ -39,6 +39,11 @@ class CarController(CarControllerBase):
         self.last_button_frame = self.frame
         can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, resume=True))
 
+    # LKAS button
+    if self.frame % 10 == 0:
+      if CS.lkas_car_model != -1:
+        can_sends.append(chryslercan.create_lkas_heartbit(self.packer, CS.lkas_enabled, CS.lkas_heartbit))
+
     # HUD alerts
     if self.frame % 25 == 0:
       if CS.lkas_car_model != -1:
