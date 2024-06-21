@@ -36,6 +36,7 @@ typedef struct {
   const int DAS_3;
   const int DAS_6;
   const int LKAS_COMMAND;
+  const int LKAS_HEARTBIT;
   const int CRUISE_BUTTONS;
   const int CRUISE_BUTTONS_ALT;
 } ChryslerAddrs;
@@ -49,6 +50,7 @@ const ChryslerAddrs CHRYSLER_ADDRS = {
   .DAS_3            = 0x1F4,  // ACC engagement states from DASM
   .DAS_6            = 0x2A6,  // LKAS HUD and auto headlight control from DASM
   .LKAS_COMMAND     = 0x292,  // LKAS controls from DASM
+  .LKAS_HEARTBIT    = 0x2D9,  // LKAS HEARTBIT from DASM
   .CRUISE_BUTTONS   = 0x23B,  // Cruise control buttons
   .CRUISE_BUTTONS_ALT = 0x23B,  // Cruise control buttons
 };
@@ -83,6 +85,7 @@ const CanMsg CHRYSLER_TX_MSGS[] = {
   {CHRYSLER_ADDRS.CRUISE_BUTTONS, 0, 3},
   {CHRYSLER_ADDRS.LKAS_COMMAND, 0, 6},
   {CHRYSLER_ADDRS.DAS_6, 0, 8},
+  {CHRYSLER_ADDRS.LKAS_HEARTBIT, 0, 5},
 };
 
 const CanMsg CHRYSLER_RAM_DT_TX_MSGS[] = {
@@ -262,7 +265,7 @@ static int chrysler_fwd_hook(int bus_num, int addr) {
   }
 
   // forward all messages from camera except LKAS messages
-  const bool is_lkas = ((addr == chrysler_addrs->LKAS_COMMAND) || (addr == chrysler_addrs->DAS_6));
+  const bool is_lkas = ((addr == chrysler_addrs->LKAS_COMMAND) || (addr == chrysler_addrs->DAS_6) || (addr == chrysler_addrs->LKAS_HEARTBIT));
   if ((bus_num == 2) && !is_lkas){
     bus_fwd = 0;
   }

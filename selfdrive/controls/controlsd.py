@@ -785,6 +785,10 @@ class Controls:
 
     hudControl.rightLaneVisible = True
     hudControl.leftLaneVisible = True
+    hudControl.leftLaneClose = False
+    hudControl.rightLaneClose = False
+    hudControl.leftLaneDepart = False
+    hudControl.rightLaneDepart = False
 
     recent_blinker = (self.sm.frame - self.last_blinker_frame) * DT_CTRL < 5.0  # 5s blinker cooldown
     ldw_allowed = self.is_ldw_enabled and CS.vEgo > LDW_MIN_SPEED and not recent_blinker \
@@ -792,9 +796,9 @@ class Controls:
 
     model_v2 = self.sm['modelV2']
     desire_prediction = model_v2.meta.desirePrediction
-    if len(desire_prediction) and ldw_allowed:
-      right_lane_visible = model_v2.laneLineProbs[2] > 0.5
+    if len(desire_prediction):
       left_lane_visible = model_v2.laneLineProbs[1] > 0.5
+      right_lane_visible = model_v2.laneLineProbs[2] > 0.5
       l_lane_change_prob = desire_prediction[Desire.laneChangeLeft]
       r_lane_change_prob = desire_prediction[Desire.laneChangeRight]
 
@@ -802,10 +806,14 @@ class Controls:
       l_lane_close = left_lane_visible and (lane_lines[1].y[0] > -(1.08 + CAMERA_OFFSET))
       r_lane_close = right_lane_visible and (lane_lines[2].y[0] < (1.08 - CAMERA_OFFSET))
 
+      hudControl.leftLaneVisible = bool(left_lane_visible)
+      hudControl.rightLaneVisible = bool(right_lane_visible)
+      hudControl.leftLaneClose = bool(l_lane_close)
+      hudControl.rightLaneClose = bool(r_lane_close)
       hudControl.leftLaneDepart = bool(l_lane_change_prob > LANE_DEPARTURE_THRESHOLD and l_lane_close)
       hudControl.rightLaneDepart = bool(r_lane_change_prob > LANE_DEPARTURE_THRESHOLD and r_lane_close)
 
-    if hudControl.rightLaneDepart or hudControl.leftLaneDepart:
+    if ldw_allowed and (hudControl.rightLaneDepart or hudControl.leftLaneDepart):
       self.events.add(EventName.ldw)
 
     clear_event_types = set()
