@@ -13,7 +13,7 @@ class CarInterface(CarInterfaceBase):
   @staticmethod
   def _get_params(ret, params, candidate, fingerprint, car_fw, disable_openpilot_long, experimental_long, docs):
     ret.carName = "chrysler"
-    ret.dashcamOnly = candidate in RAM_HD
+    ret.dashcamOnly = True
 
     # radar parsing needs some work, see https://github.com/commaai/openpilot/issues/26842
     ret.radarUnavailable = DBC[candidate]['radar'] is None
