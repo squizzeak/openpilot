@@ -15,6 +15,7 @@ class CarState(CarStateBase):
     self.auto_high_beam = 0
     self.button_counter = 0
     self.lkas_car_model = -1
+    self.lkas_enabled = None
     self.button_message = "CRUISE_BUTTONS_ALT" if CP.flags & ChryslerFlags.RAM_HD_ALT_BUTTONS else "CRUISE_BUTTONS"
 
     if CP.carFingerprint in RAM_CARS:
@@ -112,7 +113,10 @@ class CarState(CarStateBase):
       self.lkas_enabled = cp.vl["Center_Stack_2"]["LKAS_Button"] or cp.vl["Center_Stack_1"]["LKAS_Button"]
     else:
       self.lkas_enabled = not self.lkas_heartbit["LKAS_DISABLED"]
-
+      if self.lkas_previously_enabled is not None and self.lkas_previously_enabled != self.lkas_enabled:
+          if not cp.vl["TRACTION_BUTTON"]["TOGGLE_LKAS"] == 1:
+            self.lkas_enabled = self.lkas_previously_enabled
+      fp_ret.alwaysOnLateralDisabled = not self.lkas_enabled
     return ret, fp_ret
 
   @staticmethod
