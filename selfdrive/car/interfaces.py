@@ -235,7 +235,7 @@ class CarInterfaceBase(ABC):
     self.use_nnff = not comma_nnff_supported and nnff_supported and lateral_tune and self.params.get_bool("NNFF")
     self.use_nnff_lite = not self.use_nnff and lateral_tune and self.params.get_bool("NNFFLite")
 
-    self.always_on_lateral_disabled = False
+    self.always_on_lateral_disabled = None
     self.belowSteerSpeed_shown = False
     self.disable_belowSteerSpeed = False
     self.disable_resumeRequired = False
@@ -414,7 +414,8 @@ class CarInterfaceBase(ABC):
       ret.cruiseState.speedCluster = ret.cruiseState.speed
 
     # Add any additional frogpilotCarStates
-    fp_ret.alwaysOnLateralDisabled = self.always_on_lateral_disabled
+    if self.always_on_lateral_disabled is not None:
+      fp_ret.alwaysOnLateralDisabled = self.always_on_lateral_disabled
     fp_ret.distanceLongPressed = self.frogpilot_distance_functions(frogpilot_toggles)
     fp_ret.ecoGear |= ret.gearShifter == GearShifter.eco
     fp_ret.sportGear |= ret.gearShifter == GearShifter.sport
