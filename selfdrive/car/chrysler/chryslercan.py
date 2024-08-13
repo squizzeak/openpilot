@@ -4,7 +4,7 @@ from openpilot.selfdrive.car.chrysler.values import ChryslerFlags, RAM_CARS
 GearShifter = car.CarState.GearShifter
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 
-def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, auto_high_beam, lat_active):
+def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, auto_high_beam, lat_active, max_steer, last_steer):
   # LKAS_HUD - Controls what lane-keeping icon is displayed
 
   # == Color ==
@@ -14,30 +14,31 @@ def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, au
   # 3 ldw
 
   # == Lines ==
-  # 03 white Lines
-  # 04 grey lines
-  # 09 left lane close
-  # 0A right lane close
-  # 0B left Lane very close
-  # 0C right Lane very close
-  # 0D left cross cross
-  # 0E right lane cross
+  #  0x01 (transparent lines): 1
+  #  0x02 (left white): 2
+  #  0x03 (right white): 3
+  #  0x04 (left yellow with car on top): 4
+  #  0x05 (left yellow with car on top): 5
+  #  0x06 (both white): 6
+  #  0x07 (left yellow): 7
+  #  0x08 (left yellow right white): 8
+  #  0x09 (right yellow): 9
+  #  0x0a (right yellow left white): 10
+  #  0x0b (left yellow with car on top right white): 11
+  #  0x0c (right yellow with car on top left white): 12
 
   # == Alerts ==
   # 0 Normal
+  # 1 LaneSense On
+  # 2 LaneSense Off
   # 6 place hands on wheel
   # 7 lane departure place hands on wheel
+  # 9 lane sense unavailable + clean windshield
+  # 10 lane sense unavailable + service required
+  # 11 lane sense unavailable + auto high beam unavailable + clean windshield
+  # 12 lane sense unavailable + service required + auto high beam unavailable
 
   color, lines, alerts = 0, 0, 0
-
-  if lat_active:
-    color = 2
-    lines = 3
-  elif lkas_active:
-    color = 1
-    lines = 4
-    if hud_count < (1 * 4):
-      alerts = 1
 
   if hud_alert == VisualAlert.ldw:
     color = 3
@@ -45,6 +46,30 @@ def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, au
   elif hud_alert == VisualAlert.steerRequired:
     color = 1
     alerts = 6
+  elif lkas_active:
+    color = 2
+    lines = 6
+    if last_steer > max_steer * .75:
+      lines = 5
+    elif last_steer < -max_steer * .75:
+      lines = 4
+    elif last_steer > max_steer * .5:
+      lines = 9
+    elif last_steer < -max_steer * .5:
+      lines = 7
+    elif last_steer > max_steer * .25:
+      lines = 10
+    elif last_steer < -max_steer * .25:
+      lines = 8
+    elif last_steer > max_steer * .05:
+      lines = 3
+    elif last_steer < -max_steer * .05:
+      lines = 2
+  elif lat_active:
+    color = 1
+    lines = 1
+    if hud_count < (1 * 10):
+      alerts = 1
 
   values = {
     "LKAS_ICON_COLOR": color,
