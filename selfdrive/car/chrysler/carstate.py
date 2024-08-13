@@ -113,9 +113,11 @@ class CarState(CarStateBase):
       self.lkas_enabled = cp.vl["Center_Stack_2"]["LKAS_Button"] or cp.vl["Center_Stack_1"]["LKAS_Button"]
     else:
       self.lkas_enabled = not self.lkas_heartbit["LKAS_DISABLED"]
-      if self.lkas_previously_enabled is not None and self.lkas_previously_enabled != self.lkas_enabled:
+      if self.lkas_previously_enabled and not self.lkas_enabled:
+          # The car will try to disable LKAS if there is a lack of steering input for too long
           if not cp.vl["TRACTION_BUTTON"]["TOGGLE_LKAS"] == 1:
-            self.lkas_enabled = self.lkas_previously_enabled
+            # If the toggle button was not pressed, re-enable LKAS
+            self.lkas_enabled = True
       fp_ret.alwaysOnLateralDisabled = not self.lkas_enabled
     return ret, fp_ret
 
