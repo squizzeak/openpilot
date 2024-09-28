@@ -4,7 +4,8 @@ from openpilot.selfdrive.car.chrysler.values import ChryslerFlags, RAM_CARS
 GearShifter = car.CarState.GearShifter
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 
-def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, auto_high_beam, lat_active, max_steer, last_steer):
+def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, auto_high_beam, lat_active,
+                    left_lane_visible, right_lane_visible, left_lane_close, right_lane_close, left_lane_depart, right_lane_depart):
   # LKAS_HUD - Controls what lane-keeping icon is displayed
 
   # == Color ==
@@ -18,7 +19,7 @@ def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, au
   #  0x02 (left white): 2
   #  0x03 (right white): 3
   #  0x04 (left yellow with car on top): 4
-  #  0x05 (left yellow with car on top): 5
+  #  0x05 (right yellow with car on top): 5
   #  0x06 (both white): 6
   #  0x07 (left yellow): 7
   #  0x08 (left yellow right white): 8
@@ -49,22 +50,28 @@ def create_lkas_hud(packer, CP, lkas_active, hud_alert, hud_count, car_model, au
   elif lkas_active:
     color = 2
     lines = 6
-    if last_steer > max_steer * .75:
-      lines = 5
-    elif last_steer < -max_steer * .75:
+    if left_lane_visible and right_lane_visible:
+      lines = 6
+    elif left_lane_depart and right_lane_visible:
+      lines = 11
+    elif left_lane_depart:
       lines = 4
-    elif last_steer > max_steer * .5:
-      lines = 9
-    elif last_steer < -max_steer * .5:
-      lines = 7
-    elif last_steer > max_steer * .25:
-      lines = 10
-    elif last_steer < -max_steer * .25:
+    elif right_lane_depart and left_lane_visible:
+      lines = 12
+    elif right_lane_depart:
+      lines = 5
+    elif left_lane_close and right_lane_visible:
       lines = 8
-    elif last_steer > max_steer * .05:
-      lines = 3
-    elif last_steer < -max_steer * .05:
+    elif left_lane_close:
+      lines = 7
+    elif right_lane_close and left_lane_visible:
+      lines = 10
+    elif right_lane_close:
+      lines = 9
+    elif left_lane_visible:
       lines = 2
+    elif right_lane_visible:
+      lines = 3
   elif lat_active:
     color = 1
     lines = 1
