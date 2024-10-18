@@ -80,8 +80,9 @@ FrogPilotAdvancedVisualsPanel::FrogPilotAdvancedVisualsPanel(FrogPilotSettingsWi
       advancedVisualToggle = lateralMetricsBtn;
     } else if (param == "LongitudinalMetrics") {
       std::vector<QString> longitudinalToggles{"LeadInfo", "JerkInfo"};
-      std::vector<QString> longitudinalToggleNames{tr("Lead Info"), tr("Longitudinal Jerk")};
-      advancedVisualToggle = new FrogPilotButtonToggleControl(param, title, desc, longitudinalToggles, longitudinalToggleNames);
+      std::vector<QString> longitudinalToggleNames{tr("Lead Info"), tr("Jerk Values")};
+      longitudinalMetricsBtn = new FrogPilotButtonToggleControl(param, title, desc, longitudinalToggles, longitudinalToggleNames);
+      advancedVisualToggle = longitudinalMetricsBtn;
     } else if (param == "NumericalTemp") {
       std::vector<QString> temperatureToggles{"Fahrenheit"};
       std::vector<QString> temperatureToggleNames{tr("Fahrenheit")};

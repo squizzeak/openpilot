@@ -86,11 +86,9 @@ def backup_directory(backup, destination, success_message, fail_message, minimum
       if compressed:
         if filecmp.cmp(compressed_backup, latest_backup, shallow=False):
           run_cmd(["sudo", "rm", "-rf", compressed_backup], f"Deleted identical backup: {os.path.basename(compressed_backup)}", f"Failed to delete identical backup: {os.path.basename(compressed_backup)}")
-          print("Backup was identical to the previous backup and was deleted.")
       else:
         if filecmp.dircmp(destination, latest_backup).left_only == []:
           run_cmd(["sudo", "rm", "-rf", destination], f"Deleted identical backup: {os.path.basename(destination)}", f"Failed to delete identical backup: {os.path.basename(destination)}")
-          print("Backup was identical to the previous backup and was deleted.")
 
   except Exception as e:
     print(f"An unexpected error occurred while trying to create the {backup} backup: {e}")
@@ -268,7 +266,7 @@ def run_cmd(cmd, success_message, fail_message, retries=5, delay=1):
     time.sleep(delay)
   return False
 
-def setup_frogpilot(build_metadata):
+def setup_frogpilot(build_metadata, params):
   remount_persist = ["sudo", "mount", "-o", "remount,rw", "/persist"]
   if not run_cmd(remount_persist, "Successfully remounted /persist as read-write.", "Failed to remount /persist."):
     HARDWARE.reboot()
@@ -277,29 +275,47 @@ def setup_frogpilot(build_metadata):
   os.makedirs(MODELS_PATH, exist_ok=True)
   os.makedirs(THEME_SAVE_PATH, exist_ok=True)
 
+  if not params.get_bool("ResetFrogTheme"):
+    animated_frog_theme_path = os.path.join(THEME_SAVE_PATH, "theme_packs/frog-animated")
+    if os.path.exists(animated_frog_theme_path):
+      shutil.rmtree(animated_frog_theme_path)
+    frog_distance_theme_path = os.path.join(THEME_SAVE_PATH, "distance_icons/frog-animated")
+    if os.path.exists(frog_distance_theme_path):
+      shutil.rmtree(frog_distance_theme_path)
+    frog_theme_path = os.path.join(THEME_SAVE_PATH, "theme_packs/frog")
+    if os.path.exists(frog_theme_path):
+      shutil.rmtree(frog_theme_path)
+    params.put_bool("ResetFrogTheme", not (os.path.exists(animated_frog_theme_path) or os.path.exists(frog_distance_theme_path) or os.path.exists(frog_theme_path)))
+
   frog_color_source = os.path.join(ACTIVE_THEME_PATH, "colors")
   frog_color_destination = os.path.join(THEME_SAVE_PATH, "theme_packs/frog/colors")
-  copy_if_exists(frog_color_source, frog_color_destination)
+  if not os.path.exists(frog_color_destination):
+    copy_if_exists(frog_color_source, frog_color_destination)
 
   frog_distance_icon_source = os.path.join(ACTIVE_THEME_PATH, "distance_icons")
   frog_distance_icon_destination = os.path.join(THEME_SAVE_PATH, "distance_icons/frog-animated")
-  copy_if_exists(frog_distance_icon_source, frog_distance_icon_destination)
+  if not os.path.exists(frog_distance_icon_destination):
+    copy_if_exists(frog_distance_icon_source, frog_distance_icon_destination)
 
   frog_icon_source = os.path.join(ACTIVE_THEME_PATH, "icons")
   frog_icon_destination = os.path.join(THEME_SAVE_PATH, "theme_packs/frog-animated/icons")
-  copy_if_exists(frog_icon_source, frog_icon_destination)
+  if not os.path.exists(frog_icon_destination):
+    copy_if_exists(frog_icon_source, frog_icon_destination)
 
   frog_signal_source = os.path.join(ACTIVE_THEME_PATH, "signals")
   frog_signal_destination = os.path.join(THEME_SAVE_PATH, "theme_packs/frog/signals")
-  copy_if_exists(frog_signal_source, frog_signal_destination)
+  if not os.path.exists(frog_signal_destination):
+    copy_if_exists(frog_signal_source, frog_signal_destination)
 
   frog_sound_source = os.path.join(ACTIVE_THEME_PATH, "sounds")
   frog_sound_destination = os.path.join(THEME_SAVE_PATH, "theme_packs/frog/sounds")
-  copy_if_exists(frog_sound_source, frog_sound_destination)
+  if not os.path.exists(frog_sound_destination):
+    copy_if_exists(frog_sound_source, frog_sound_destination)
 
-  steering_wheel_source = os.path.join(ACTIVE_THEME_PATH, "steering_wheel")
-  steering_wheel_destination = os.path.join(THEME_SAVE_PATH, "steering_wheels")
-  copy_if_exists(steering_wheel_source, steering_wheel_destination, single_file_name="frog.png")
+  frog_steering_wheel_source = os.path.join(ACTIVE_THEME_PATH, "steering_wheel")
+  frog_steering_wheel_destination = os.path.join(THEME_SAVE_PATH, "steering_wheels")
+  if not os.path.exists(frog_steering_wheel_destination):
+    copy_if_exists(frog_steering_wheel_source, frog_steering_wheel_destination, single_file_name="frog.png")
 
   remount_root = ["sudo", "mount", "-o", "remount,rw", "/"]
   if not run_cmd(remount_root, "File system remounted as read-write.", "Failed to remount file system."):
