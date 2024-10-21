@@ -90,15 +90,14 @@ private:
   bool wide_cam_requested = false;
 
   // FrogPilot widgets
-  void initializeFrogPilotWidgets();
-  void paintFrogPilotWidgets(QPainter &painter);
-  void updateFrogPilotVariables(int alert_height, const UIScene &scene);
-  void updateSignals();
-
   void drawLeadInfo(QPainter &p);
   void drawSLCConfirmation(QPainter &p);
   void drawStatusBar(QPainter &p);
   void drawTurnSignals(QPainter &p);
+  void initializeFrogPilotWidgets();
+  void paintFrogPilotWidgets(QPainter &painter);
+  void updateFrogPilotVariables(int alert_height, const UIScene &scene);
+  void updateSignals();
 
   // FrogPilot variables
   Params paramsMemory{"/dev/shm/params"};
@@ -191,7 +190,7 @@ protected:
   void showEvent(QShowEvent *event) override;
   void updateFrameMat() override;
   void drawLaneLines(QPainter &painter, const UIState *s, float v_ego);
-  void drawLead(QPainter &painter, const cereal::RadarState::LeadData::Reader &lead_data, const QPointF &vd, float v_ego, const QColor lead_marker_color);
+  void drawLead(QPainter &painter, const cereal::RadarState::LeadData::Reader &lead_data, const QPointF &vd, float v_ego, const QColor &lead_marker_color, bool adjacent = false);
   void drawHud(QPainter &p);
   void drawDriverState(QPainter &painter, const UIState *s);
   void paintEvent(QPaintEvent *event) override;

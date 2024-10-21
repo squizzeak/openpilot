@@ -12,7 +12,7 @@ from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_acceleration import Fr
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_events import FrogPilotEvents
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_following import FrogPilotFollowing
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_vcruise import FrogPilotVCruise
-from openpilot.selfdrive.frogpilot.frogpilot_functions import MovingAverageCalculator, calculate_lane_width, calculate_road_curvature, update_frogpilot_toggles
+from openpilot.selfdrive.frogpilot.frogpilot_utilities import MovingAverageCalculator, calculate_lane_width, calculate_road_curvature, update_frogpilot_toggles
 from openpilot.selfdrive.frogpilot.frogpilot_variables import CRUISING_SPEED, MODEL_LENGTH, NON_DRIVING_GEARS, PLANNER_TIME, THRESHOLD
 
 class FrogPilotPlanner:
@@ -73,7 +73,7 @@ class FrogPilotPlanner:
     self.frogpilot_following.update(carState.aEgo, controlsState, frogpilotCarState, lead_distance, stopping_distance, v_ego, v_lead, frogpilot_toggles)
 
     check_lane_width = frogpilot_toggles.adjacent_lanes or frogpilot_toggles.adjacent_path_metrics or frogpilot_toggles.blind_spot_path or frogpilot_toggles.lane_detection
-    if check_lane_width and v_ego >= frogpilot_toggles.minimum_lane_change_speed:
+    if check_lane_width and v_ego >= frogpilot_toggles.minimum_lane_change_speed or frogpilot_toggles.adjacent_lead_tracking_ui:
       self.lane_width_left = calculate_lane_width(modelData.laneLines[0], modelData.laneLines[1], modelData.roadEdges[0])
       self.lane_width_right = calculate_lane_width(modelData.laneLines[3], modelData.laneLines[2], modelData.roadEdges[1])
     else:

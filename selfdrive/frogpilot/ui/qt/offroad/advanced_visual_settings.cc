@@ -58,6 +58,7 @@ FrogPilotAdvancedVisualsPanel::FrogPilotAdvancedVisualsPanel(FrogPilotSettingsWi
       QObject::connect(developerUIToggle, &FrogPilotParamManageControl::manageButtonClicked, [this]() {
         borderMetricsBtn->setVisibleButton(0, hasBSM);
         lateralMetricsBtn->setVisibleButton(1, hasAutoTune);
+        longitudinalMetricsBtn->setVisibleButton(0, hasRadar);
 
         std::set<QString> modifiedDeveloperUIKeys = developerUIKeys;
 
@@ -79,8 +80,8 @@ FrogPilotAdvancedVisualsPanel::FrogPilotAdvancedVisualsPanel(FrogPilotSettingsWi
       lateralMetricsBtn = new FrogPilotButtonToggleControl(param, title, desc, lateralToggles, lateralToggleNames);
       advancedVisualToggle = lateralMetricsBtn;
     } else if (param == "LongitudinalMetrics") {
-      std::vector<QString> longitudinalToggles{"LeadInfo", "JerkInfo"};
-      std::vector<QString> longitudinalToggleNames{tr("Lead Info"), tr("Jerk Values")};
+      std::vector<QString> longitudinalToggles{"AdjacentLeadsUI", "LeadInfo", "JerkInfo"};
+      std::vector<QString> longitudinalToggleNames{tr("Adjacent Leads"), tr("Lead Info"), tr("Jerk Values")};
       longitudinalMetricsBtn = new FrogPilotButtonToggleControl(param, title, desc, longitudinalToggles, longitudinalToggleNames);
       advancedVisualToggle = longitudinalMetricsBtn;
     } else if (param == "NumericalTemp") {
@@ -158,6 +159,7 @@ void FrogPilotAdvancedVisualsPanel::updateCarToggles() {
   hasAutoTune = parent->hasAutoTune;
   hasBSM = parent->hasBSM;
   hasOpenpilotLongitudinal = parent->hasOpenpilotLongitudinal;
+  hasRadar = parent->hasRadar;
 
   hideToggles();
 }

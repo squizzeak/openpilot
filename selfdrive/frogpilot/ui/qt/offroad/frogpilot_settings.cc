@@ -183,6 +183,7 @@ void FrogPilotSettingsWindow::updateCarVariables() {
     hasNNFFLog = checkNNFFLogFileExists(carFingerprint);
     hasOpenpilotLongitudinal = hasLongitudinalControl(CP);
     hasPCMCruise = CP.getPcmCruise();
+    hasRadar = !CP.getRadarUnavailable();
     hasSNG = CP.getMinEnableSpeed() <= 0;
     isGM = carModel == "gm";
     isGMPCMCruise = CP.getCarName() == "gm" && CP.getPcmCruise();

@@ -104,7 +104,7 @@ typedef struct UIScene {
   QPolygonF road_edge_vertices[2];
 
   // lead
-  QPointF lead_vertices[2];
+  QPointF lead_vertices[6];
 
   // DMoji state
   float driver_pose_vals[3];
@@ -122,6 +122,18 @@ typedef struct UIScene {
   uint64_t started_frame;
 
   // FrogPilot variables
+  QColor lane_lines_color;
+  QColor lead_marker_color;
+  QColor path_color;
+  QColor path_edges_color;
+  QColor road_edges_color;
+  QColor sidebar_color1;
+  QColor sidebar_color2;
+  QColor sidebar_color3;
+
+  QPolygonF track_adjacent_vertices[6];
+  QPolygonF track_edge_vertices;
+
   bool acceleration_path;
   bool adjacent_path;
   bool adjacent_path_metrics;
@@ -254,18 +266,6 @@ typedef struct UIScene {
   int steering_angle_deg;
   int stopped_equivalence;
   int tethering_config;
-
-  QColor lane_lines_color;
-  QColor lead_marker_color;
-  QColor path_color;
-  QColor path_edges_color;
-  QColor road_edges_color;
-  QColor sidebar_color1;
-  QColor sidebar_color2;
-  QColor sidebar_color3;
-
-  QPolygonF track_adjacent_vertices[6];
-  QPolygonF track_edge_vertices;
 
 } UIScene;
 
