@@ -47,6 +47,7 @@ private:
   bool hasAutoTune;
   bool hasBSM;
   bool hasOpenpilotLongitudinal;
+  bool hasRadar;
   bool isMetric = params.getBool("IsMetric");
 
   std::map<QString, AbstractControl*> toggles;

@@ -1091,6 +1091,14 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 3.),
   },
 
+  EventName.thisIsFineSteerSaturated: {
+    ET.WARNING: Alert(
+      "This is fine",
+      "☕",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.LOW, VisualAlert.steerRequired, AudibleAlert.thisIsFine, 2.),
+  },
+
   EventName.torqueNNLoad: {
     ET.PERMANENT: torque_nn_load_alert,
   },

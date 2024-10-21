@@ -9,7 +9,8 @@ from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params, UnknownKeyName
 
 from openpilot.selfdrive.frogpilot.assets.download_functions import GITHUB_URL, GITLAB_URL, download_file, get_remote_file_size, get_repository_url, handle_error, handle_request_error, verify_download
-from openpilot.selfdrive.frogpilot.frogpilot_functions import MODELS_PATH, delete_file
+from openpilot.selfdrive.frogpilot.frogpilot_functions import MODELS_PATH
+from openpilot.selfdrive.frogpilot.frogpilot_utilities import delete_file
 
 VERSION = "v9"
 
@@ -176,8 +177,6 @@ class ModelManager:
     if os.path.isfile(source_path) and not os.path.isfile(default_model_path):
       shutil.copyfile(source_path, default_model_path)
       print(f"Copied default model from {source_path} to {default_model_path}")
-    else:
-      print(f"Source default model not found at {source_path}. Exiting...")
 
     sgo_model_path = os.path.join(MODELS_PATH, "secret-good-openpilot.thneed")
     source_path = os.path.join(BASEDIR, "selfdrive", "modeld", "models", "supercombo.thneed")
@@ -185,8 +184,6 @@ class ModelManager:
     if os.path.isfile(source_path) and not os.path.isfile(sgo_model_path):
       shutil.copyfile(source_path, sgo_model_path)
       print(f"Copied 'secret-good-openpilot' model from {source_path} to {sgo_model_path}")
-    else:
-      print(f"Source 'secret-good-openpilot' model not found at {source_path}. Exiting...")
 
   def update_models(self, boot_run=False):
     if boot_run:

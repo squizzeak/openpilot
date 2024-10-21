@@ -71,6 +71,7 @@ def manager_init() -> None:
     # Default FrogPilot parameters
     ("AccelerationPath", "1"),
     ("AccelerationProfile", "2"),
+    ("AdjacentLeadsUI", "0"),
     ("AdjacentPath", "0"),
     ("AdjacentPathMetrics", "0"),
     ("AdvancedCustomUI", "0"),

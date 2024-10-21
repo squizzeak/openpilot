@@ -45,12 +45,16 @@ int get_path_length_idx(const cereal::XYZTData::Reader &line, const float path_h
 }
 
 void update_leads(UIState *s, const cereal::RadarState::Reader &radar_state, const cereal::XYZTData::Reader &line) {
-  cereal::RadarState::LeadData::Reader (cereal::RadarState::Reader::*get_lead_data[2])() const = {
+  cereal::RadarState::LeadData::Reader (cereal::RadarState::Reader::*get_lead_data[6])() const = {
     &cereal::RadarState::Reader::getLeadOne,
     &cereal::RadarState::Reader::getLeadTwo,
+    &cereal::RadarState::Reader::getLeadLeft,
+    &cereal::RadarState::Reader::getLeadRight,
+    &cereal::RadarState::Reader::getLeadLeftFar,
+    &cereal::RadarState::Reader::getLeadRightFar
   };
 
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 6; ++i) {
     auto lead_data = (radar_state.*get_lead_data[i])();
     if (lead_data.getStatus()) {
       float z = line.getZ()[get_path_length_idx(line, lead_data.getDRel())];

@@ -16,6 +16,7 @@ public:
   bool hasNNFFLog;
   bool hasOpenpilotLongitudinal;
   bool hasPCMCruise;
+  bool hasRadar;
   bool hasSNG;
   bool isGM;
   bool isGMPCMCruise;
