@@ -95,6 +95,7 @@ class CarState(CarStateBase):
     self.das_3 = cp_cruise.vl["DAS_3"]
     self.cruise_active_actual = self.das_3["ACC_ACTIVE"] == 1
     self.acc_decelerating = self.das_3["ACC_DECEL_REQ"] == 1
+    self.accDeceleration = cp_cruise.vl["DAS_3"]["ACC_DECEL"] * 0.004885 - 16
     
     self.lkas_heartbit = cp_cam.vl["LKAS_HEARTBIT"]
 
