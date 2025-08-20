@@ -120,10 +120,10 @@ class CarController(CarControllerBase):
       return chryslercan.create_das_3_command(
         self.packer, self.CP,
         acc_decel_req=1,
-        acc_decel=3276,
+        acc_decel=3276,  # Maintain current deceleration
         acc_brk_prep=1,
         acc_available=1,
-        acc_active=1
+        acc_active=0     # Don't interfere with stock ACC active state
       )
     
     return None
