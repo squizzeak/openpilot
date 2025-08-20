@@ -27,6 +27,9 @@ class CarState(CarStateBase):
     self.distance_button = 0
     
     self.brake_hold = False
+    self.cruise_active_actual = False
+    self.acc_decelerating = False
+    self.das_3 = {}
 
   def update(self, cp, cp_cam, frogpilot_toggles):
 
@@ -89,6 +92,11 @@ class CarState(CarStateBase):
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
     ret.accDeceleration = cp_cruise.vl["DAS_3"]["ACC_DECEL"] * 0.004885 - 16
+    
+    self.das_3 = cp_cruise.vl["DAS_3"]
+    self.cruise_active_actual = self.das_3["ACC_ACTIVE"] == 1
+    self.acc_decelerating = self.das_3["ACC_DECEL_REQ"] == 1
+    
     self.lkas_heartbit = cp_cam.vl["LKAS_HEARTBIT"]
 
     if self.CP.carFingerprint in RAM_CARS:

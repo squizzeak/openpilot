@@ -104,26 +104,23 @@ class CarController(CarControllerBase):
 
   def brake_hold(self, CS, frogpilot_toggles):
     if not frogpilot_toggles.brake_hold:
-      self.brake_hold_active = False
+      CS.brake_hold = False
       return None
     
     if (CS.out.gasPressed or CS.out.brakePressed or 
         not CS.out.cruiseState.enabled or CS.out.gearShifter != 2):
-      self.brake_hold_active = False
+      CS.brake_hold = False
       return None
     
-    if (CS.out.standstill and CS.out.cruiseState.enabled and 
-        hasattr(CS.out, 'accDeceleration') and CS.out.accDeceleration < -0.5):
-      self.brake_hold_active = True
+    if (not CS.brake_hold and CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+      CS.brake_hold = True
     
-    if self.brake_hold_active:
+    if CS.brake_hold and not CS.cruise_active_actual:
+      brake_decel = 3276
       return chryslercan.create_das_3_command(
         self.packer, self.CP,
-        acc_decel_req=1,
-        acc_decel=3276,  # Maintain current deceleration
-        acc_brk_prep=1,
-        acc_available=1,
-        acc_active=0     # Don't interfere with stock ACC active state
+        brake_decel,
+        CS.das_3
       )
     
     return None

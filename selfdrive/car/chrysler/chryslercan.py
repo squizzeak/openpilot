@@ -117,14 +117,15 @@ def create_cruise_buttons(packer, CP, frame, bus, cancel=False, resume=False):
   return packer.make_can_msg(button_message, bus, values)
 
 
-def create_das_3_command(packer, CP, acc_decel_req, acc_decel, acc_brk_prep, acc_available, acc_active):
-  values = {
-    "ACC_DECEL_REQ": acc_decel_req,
-    "ACC_DECEL": acc_decel,
-    "ACC_BRK_PREP": acc_brk_prep,
-    "ACC_AVAILABLE": acc_available,
-    "ACC_ACTIVE": acc_active,
-    "COUNTER": 0,
-    "CHECKSUM": 0,
-  }
+def create_das_3_command(packer, CP, brake_decel, das_3_original):
+  values = das_3_original.copy()
+  values["ACC_AVAILABLE"] = 1
+  values["ACC_ACTIVE"] = 1
+  values["COUNTER"] = (das_3_original["COUNTER"] + 2) % 0x10
+  
+  if brake_decel is not None:
+    values["ACC_DECEL_REQ"] = 1
+    values["ACC_DECEL"] = brake_decel
+    values["ACC_BRK_PREP"] = 1
+  
   return packer.make_can_msg("DAS_3", 0, values)
