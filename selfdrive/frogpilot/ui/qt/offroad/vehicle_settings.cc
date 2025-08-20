@@ -134,6 +134,8 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
   addItem(disableOpenpilotLong);
 
   std::vector<std::tuple<QString, QString, QString, QString>> vehicleToggles {
+    {"BrakeHold", tr("Brake Hold"), tr("Allows Jeep vehicles to remain stopped when ACC stops behind a lead car and automatically resume when the lead car moves. Works with stock ACC without requiring longitudinal control."), ""},
+
     {"VoltSNG", tr("2017 Volt Stop and Go Hack"), tr("Forces stop and go for the 2017 Chevy Volt."), ""},
     {"ExperimentalGMTune", tr("Experimental GM Tune"), tr("Enables FrogsGoMoo's experimental GM tune that is based on nothing but guesswork. Use at your own risk!"), ""},
     {"LongPitch", tr("Uphill/Downhill Smoothing"), tr("Smoothens the gas and brake response when driving on slopes."), ""},
@@ -257,6 +259,7 @@ void FrogPilotVehiclesPanel::updateToggles() {
   selectModelButton->setValue(carModel);
   selectModelButton->setVisible(!carMake.isEmpty());
 
+  bool chrysler = carMake == "Chrysler" || carMake == "Dodge" || carMake == "Jeep" || carMake == "Ram";
   bool gm = carMake == "Buick" || carMake == "Cadillac" || carMake == "Chevrolet" || carMake == "GM" || carMake == "GMC";
   bool hyundai = carMake == "Genesis" || carMake == "Hyundai" || carMake == "Kia";
   bool subaru = carMake == "Subaru";
@@ -265,7 +268,9 @@ void FrogPilotVehiclesPanel::updateToggles() {
   for (auto &[key, toggle] : toggles) {
     bool setVisible = false;
 
-    if (gm && gmKeys.find(key) != gmKeys.end()) {
+    if (chrysler && chryslerKeys.find(key) != chryslerKeys.end()) {
+      setVisible = true;
+    } else if (gm && gmKeys.find(key) != gmKeys.end()) {
       if (voltKeys.find(key) != voltKeys.end()) {
         setVisible = isVolt && hasOpenpilotLongitudinal && !disableOpenpilotLongitudinal;
       } else if (longitudinalKeys.find(key) != longitudinalKeys.end()) {
