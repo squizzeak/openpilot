@@ -19,6 +19,8 @@ class CarController(CarControllerBase):
 
     self.packer = CANPacker(dbc_name)
     self.params = CarControllerParams(CP)
+    
+    self.brake_hold_active = False
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
@@ -88,6 +90,10 @@ class CarController(CarControllerBase):
 
       can_sends.append(chryslercan.create_lkas_command(self.packer, self.CP, int(apply_steer), lkas_control_bit))
 
+    brake_hold_msg = self.brake_hold(CS, frogpilot_toggles)
+    if brake_hold_msg:
+      can_sends.append(brake_hold_msg)
+
     self.frame += 1
 
     new_actuators = CC.actuators.as_builder()
@@ -95,3 +101,29 @@ class CarController(CarControllerBase):
     new_actuators.steerOutputCan = self.apply_steer_last
 
     return new_actuators, can_sends
+
+  def brake_hold(self, CS, frogpilot_toggles):
+    if not frogpilot_toggles.brake_hold:
+      self.brake_hold_active = False
+      return None
+    
+    if (CS.out.gasPressed or CS.out.brakePressed or 
+        not CS.out.cruiseState.enabled or CS.out.gearShifter != 2):
+      self.brake_hold_active = False
+      return None
+    
+    if (CS.out.standstill and CS.out.cruiseState.enabled and 
+        hasattr(CS.out, 'accDeceleration') and CS.out.accDeceleration < -0.5):
+      self.brake_hold_active = True
+    
+    if self.brake_hold_active:
+      return chryslercan.create_das_3_command(
+        self.packer, self.CP,
+        acc_decel_req=1,
+        acc_decel=3276,
+        acc_brk_prep=1,
+        acc_available=1,
+        acc_active=1
+      )
+    
+    return None

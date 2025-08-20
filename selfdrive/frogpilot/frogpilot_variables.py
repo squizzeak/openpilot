@@ -161,6 +161,7 @@ frogpilot_default_params: list[tuple[str, bool | bytes | int | float | str]] = [
   ("FullMap", 0),
   ("GasRegenCmd", 1),
   ("GMapKey", ""),
+  ("BrakeHold", 0),
   ("GoatScream", 0),
   ("GreenLightAlert", 0),
   ("HideAlerts", 0),
@@ -559,6 +560,8 @@ class FrogPilotVariables:
     toggle.experimental_mode_via_tap = toggle.experimental_mode_via_press and params.get_bool("ExperimentalModeViaTap")
 
     toggle.frogsgomoo_tweak = openpilot_longitudinal and car_make == "toyota" and params.get_bool("FrogsGoMoosTweak")
+
+    toggle.brake_hold = openpilot_longitudinal and car_model in {"JEEP_GRAND_CHEROKEE", "JEEP_GRAND_CHEROKEE_2019"} and params.get_bool("BrakeHold")
 
     toggle.holiday_themes = params.get_bool("HolidayThemes")
     toggle.current_holiday_theme = params.get("CurrentHolidayTheme", encoding='utf-8') if toggle.holiday_themes else None
