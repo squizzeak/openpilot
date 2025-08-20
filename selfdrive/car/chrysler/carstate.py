@@ -91,7 +91,6 @@ class CarState(CarStateBase):
     ret.cruiseState.nonAdaptive = cp_cruise.vl["DAS_4"]["ACC_STATE"] in (1, 2)  # 1 NormalCCOn and 2 NormalCCSet
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
-    ret.accDeceleration = cp_cruise.vl["DAS_3"]["ACC_DECEL"] * 0.004885 - 16
     
     self.das_3 = cp_cruise.vl["DAS_3"]
     self.cruise_active_actual = self.das_3["ACC_ACTIVE"] == 1
