@@ -35,4 +35,15 @@
         </translation>
     </message>
 </context>
+<context>
+    <name>FrogPilotVehiclesPanel</name>
+    <message>
+        <source>Brake Hold</source>
+        <translation>Brake Hold</translation>
+    </message>
+    <message>
+        <source>Allows Jeep vehicles to remain stopped when ACC stops behind a lead car and automatically resume when the lead car moves. Works with stock ACC without requiring longitudinal control.</source>
+        <translation>Allows Jeep vehicles to remain stopped when ACC stops behind a lead car and automatically resume when the lead car moves. Works with stock ACC without requiring longitudinal control.</translation>
+    </message>
+</context>
 </TS>
