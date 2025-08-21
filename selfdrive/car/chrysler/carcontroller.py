@@ -108,19 +108,19 @@ class CarController(CarControllerBase):
     self.last_das_3_counter = CS.das_3.get('COUNTER', 0)
     
     if (not CS.brake_hold and CS.cruise_active_actual and CS.acc_decelerating and 
-        CS.out.standstill and frogpilot_toggles.brake_hold):
+        CS.standstill and frogpilot_toggles.brake_hold):
       CS.brake_hold = True
     
-    if CS.brake_hold and (CS.out.gasPressed or CS.out.brakePressed or 
-                          not CS.out.cruiseState.available or CS.acc_accelerating or 
-                          not CS.out.standstill or not CS.forward_gear or
+    if CS.brake_hold and (CS.gasPressed or CS.brakePressed or 
+                          not CS.cruiseState.available or CS.acc_accelerating or 
+                          not CS.standstill or not CS.forward_gear or
                           not frogpilot_toggles.brake_hold):
       CS.brake_hold = False
       return None
     
     if CS.brake_hold:
       if CS.cruise_active_actual:
-        self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', 0)) if CS.out.standstill else -2.0
+        self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', 0)) if CS.standstill else -2.0
       else:
         return chryslercan.create_das_3_command(
           self.packer, self.CP,
