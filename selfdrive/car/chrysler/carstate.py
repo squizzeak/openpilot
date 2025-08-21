@@ -29,6 +29,8 @@ class CarState(CarStateBase):
     self.brake_hold = False
     self.cruise_active_actual = False
     self.acc_decelerating = False
+    self.acc_accelerating = False
+    self.forward_gear = False
     self.das_3 = {}
 
   def update(self, cp, cp_cam, frogpilot_toggles):
@@ -59,6 +61,12 @@ class CarState(CarStateBase):
       ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["Transmission_Status"]["Gear_State"], None))
     else:
       ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["GEAR"]["PRNDL"], None))
+    
+    from cereal import car
+    FORWARD_GEARS = [car.CarState.GearShifter.drive, car.CarState.GearShifter.low, 
+                     car.CarState.GearShifter.eco, car.CarState.GearShifter.sport, 
+                     car.CarState.GearShifter.manumatic]
+    self.forward_gear = ret.gearShifter in FORWARD_GEARS
     ret.vEgoRaw = cp.vl["ESP_8"]["Vehicle_Speed"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = not ret.vEgoRaw > 0.001
@@ -95,6 +103,11 @@ class CarState(CarStateBase):
     self.das_3 = cp_cruise.vl["DAS_3"]
     self.cruise_active_actual = self.das_3["ACC_ACTIVE"] == 1
     self.acc_decelerating = self.das_3["ACC_DECEL_REQ"] == 1
+    self.acc_accelerating = self.das_3.get("ENGINE_TORQUE_REQUEST_MAX", 0) == 1
+    
+    if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self.brake_hold:
+      ret.cruiseState.enabled = ret.cruiseState.available
+      ret.cruiseState.standstill = True
     
     self.lkas_heartbit = cp_cam.vl["LKAS_HEARTBIT"]
 

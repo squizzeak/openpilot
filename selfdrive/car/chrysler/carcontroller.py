@@ -20,7 +20,8 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_name)
     self.params = CarControllerParams(CP)
     
-    self.brake_hold_active = False
+    self.brake_hold_decel = 0
+    self.last_das_3_counter = -1
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
@@ -103,24 +104,28 @@ class CarController(CarControllerBase):
     return new_actuators, can_sends
 
   def brake_hold(self, CS, frogpilot_toggles):
-    if not frogpilot_toggles.brake_hold:
-      CS.brake_hold = False
-      return None
+    counter_das_3_changed = CS.das_3.get('COUNTER', 0) != self.last_das_3_counter
+    self.last_das_3_counter = CS.das_3.get('COUNTER', 0)
     
-    if (CS.out.gasPressed or CS.out.brakePressed or 
-        not CS.out.cruiseState.enabled or CS.out.gearShifter != 2):
-      CS.brake_hold = False
-      return None
-    
-    if (not CS.brake_hold and CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+    if (not CS.brake_hold and CS.cruise_active_actual and CS.acc_decelerating and 
+        CS.out.standstill and frogpilot_toggles.brake_hold):
       CS.brake_hold = True
     
-    if CS.brake_hold and not CS.cruise_active_actual:
-      brake_decel = 3276
-      return chryslercan.create_das_3_command(
-        self.packer, self.CP,
-        brake_decel,
-        CS.das_3
-      )
+    if CS.brake_hold and (CS.out.gasPressed or CS.out.brakePressed or 
+                          not CS.out.cruiseState.enabled or CS.acc_accelerating or 
+                          not CS.out.standstill or not CS.forward_gear or
+                          not frogpilot_toggles.brake_hold):
+      CS.brake_hold = False
+      return None
+    
+    if CS.brake_hold:
+      if CS.cruise_active_actual:
+        self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', 0)) if CS.out.standstill else -2.0
+      else:
+        return chryslercan.create_das_3_command(
+          self.packer, self.CP,
+          self.brake_hold_decel if self.brake_hold_decel < 0 else 3276,
+          CS.das_3
+        )
     
     return None
