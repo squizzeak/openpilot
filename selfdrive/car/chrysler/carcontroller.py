@@ -112,7 +112,7 @@ class CarController(CarControllerBase):
       CS.brake_hold = True
     
     if CS.brake_hold and (CS.out.gasPressed or CS.out.brakePressed or 
-                          not CS.out.cruiseState.enabled or CS.acc_accelerating or 
+                          not CS.out.cruiseState.available or CS.acc_accelerating or 
                           not CS.out.standstill or not CS.forward_gear or
                           not frogpilot_toggles.brake_hold):
       CS.brake_hold = False
