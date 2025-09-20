@@ -109,3 +109,35 @@ def create_cruise_buttons(packer, frame, bus, button_message, cancel=False, resu
     "COUNTER": frame % 0x10,
   }
   return packer.make_can_msg(button_message, bus, values)
+
+
+def create_das_3_brake_hold(packer, das_3_src: dict, set_standstill: bool, decel: float | None = None, brake_prep: bool = False):
+  """Create a DAS_3 message based on the last received values, overriding only standstill/brake fields.
+
+  - set_standstill: sets ACC_STANDSTILL when True to request brake hold at standstill
+  - decel: optional small negative accel request; if provided, sets ACC_DECEL_REQ and ACC_DECEL
+  - brake_prep: pass-through to ACC_BRK_PREP if decel is requested
+
+  Always increments the COUNTER by 1 to avoid re-sending identical counters.
+  """
+  if not das_3_src:
+    return None
+
+  values = das_3_src.copy()
+
+  # Increment counter
+  try:
+    values['COUNTER'] = (int(values.get('COUNTER', 0)) + 1) % 0x10
+  except Exception:
+    values['COUNTER'] = 0
+
+  # Set standstill request
+  values['ACC_STANDSTILL'] = 1 if set_standstill else 0
+
+  # Optional brake decel request
+  if decel is not None:
+    values['ACC_DECEL_REQ'] = 1
+    values['ACC_DECEL'] = float(decel)
+    values['ACC_BRK_PREP'] = 1 if brake_prep else 0
+
+  return packer.make_can_msg("DAS_3", 0, values)

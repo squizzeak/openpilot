@@ -102,6 +102,9 @@ class CarState(CarStateBase):
     self.lkas_car_model = cp_cam.vl["DAS_6"]["CAR_MODEL"]
     self.button_counter = cp.vl[self.button_message]["COUNTER"]
 
+    # Preserve the raw DAS_3 fields to enable safe modification and retransmission (e.g., brake hold)
+    self.das_3 = dict(cp_cruise.vl["DAS_3"]) if "DAS_3" in cp_cruise.vl else {}
+
     # FrogPilot CarState functions
     fp_ret.brakeLights = bool(cp.vl["ESP_1"]["BRAKE_PRESSED_ACC"])
 
