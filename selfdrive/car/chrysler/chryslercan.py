@@ -131,7 +131,9 @@ def create_das_3_brake_hold(packer, das_3_src: dict, set_standstill: bool, decel
   except Exception:
     values['COUNTER'] = 0
 
-  # Set standstill request
+  # Force ACC availability/active for the hold path and set standstill request
+  values['ACC_AVAILABLE'] = 1
+  values['ACC_ACTIVE'] = 1
   values['ACC_STANDSTILL'] = 1 if set_standstill else 0
 
   # Optional brake decel request

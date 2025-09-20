@@ -111,9 +111,9 @@ class CarController(CarControllerBase):
         if CS.cruiseState.enabled:
           self.bh_recent_acc_enabled = False
 
-      # While active, assert ACC_STANDSTILL; send at ~25 Hz (aligned with HUD updates)
-      if self.bh_hold_active and (self.frame % 4 == 0) and getattr(CS, 'das_3', None):
-        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True)
+      # While active, assert ACC_STANDSTILL and a small brake decel; send ~50 Hz
+      if self.bh_hold_active and (self.frame % 2 == 0) and getattr(CS, 'das_3', None):
+        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=-0.10, brake_prep=True)
         if msg is not None:
           can_sends.append(msg)
 
