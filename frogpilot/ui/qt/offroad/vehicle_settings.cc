@@ -98,22 +98,28 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
   };
 
   ButtonControl *selectMakeButton = new ButtonControl(tr("Select Make"), tr("SELECT"));
-  QObject::connect(selectMakeButton, &ButtonControl::clicked, [this, makes, selectMakeButton]() {
+  QObject::connect(selectMakeButton, &ButtonControl::clicked, [this, makes, selectMakeButton, parent]() {
     QString makeSelection = MultiOptionDialog::getSelection(tr("Select a Make"), makes, "", this);
     if (!makeSelection.isEmpty()) {
       params.put("CarMake", makeSelection.toStdString());
       selectMakeButton->setValue(makeSelection);
+      // Refresh parent-derived visibility flags (e.g., isJeep fallback when car is off)
+      parent->updateVariables();
+      updateToggles();
     }
   });
   settingsList->addItem(selectMakeButton);
 
   ButtonControl *selectModelButton = new ButtonControl(tr("Select Model"), tr("SELECT"));
-  QObject::connect(selectModelButton, &ButtonControl::clicked, [this, selectModelButton]() {
+  QObject::connect(selectModelButton, &ButtonControl::clicked, [this, selectModelButton, parent]() {
     QString modelSelection = MultiOptionDialog::getSelection(tr("Select a Model"), getCarNames(QString::fromStdString(params.get("CarMake")).toLower(), carModels), "", this);
     if (!modelSelection.isEmpty()) {
       params.put("CarModel", carModels.value(modelSelection).toStdString());
       params.put("CarModelName", modelSelection.toStdString());
       selectModelButton->setValue(modelSelection);
+      // Refresh visibility in case model-specific toggles depend on selection
+      parent->updateVariables();
+      updateToggles();
     }
   });
   settingsList->addItem(selectModelButton);

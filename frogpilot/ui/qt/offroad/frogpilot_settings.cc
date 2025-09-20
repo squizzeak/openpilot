@@ -331,6 +331,13 @@ void FrogPilotSettingsWindow::updateVariables() {
     }
   }
 
+  // Fallback when car is off: infer Jeep from user-selected make so Jeep-only
+  // toggles (e.g., JeepBrakeHold) can appear without live CarParams.
+  if (carParams.empty()) {
+    QString selectedMake = QString::fromStdString(params.get("CarMake", true)).toLower();
+    isJeep = (selectedMake == "jeep");
+  }
+
   std::string frogpilotCarParams = params.get("FrogPilotCarParamsPersistent");
   if (!frogpilotCarParams.empty()) {
     AlignedBuffer aligned_buf;
