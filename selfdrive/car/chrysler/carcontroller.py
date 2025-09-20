@@ -114,7 +114,8 @@ class CarController(CarControllerBase):
       # While active, assert ACC_STANDSTILL and a small brake decel with slight dither; send ~50 Hz
       if self.bh_hold_active and (self.frame % 2 == 0) and getattr(CS, 'das_3', None):
         decel = -0.10 if (self.frame // 2) % 2 == 0 else -0.11
-        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=decel, brake_prep=True)
+        das_bus = 2 if self.CP.carFingerprint in RAM_CARS else 0
+        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=decel, brake_prep=True, bus=das_bus)
         if msg is not None:
           can_sends.append(msg)
 
