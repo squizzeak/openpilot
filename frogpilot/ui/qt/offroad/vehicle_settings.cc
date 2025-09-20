@@ -158,6 +158,7 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
     {"ExperimentalGMTune", tr("FrogsGoMoo's Experimental Tune"), tr("<b>FrogsGoMoo's</b> experimental <b>General Motors</b> tune that aims to smoothen out stopping and takeoff control based on nothing but guesswork. Use at your own risk!"), ""},
     {"LongPitch", tr("Smooth Pedal Response on Hills"), tr("Smoothen the acceleration and braking when driving uphill or downhill."), ""},
     {"VoltSNG", tr("Stop and Go Hack"), tr("Force stop and go on the <b>2017 Chevy Volt</b>."), ""},
+    {"JeepBrakeHold", tr("Brake Hold (Jeeps Only)"), tr("Hold brake when ACC cancels after a short stop-and-go timeout and auto-resume when the lead vehicle departs. Experimental on Jeep models with limited SNG."), ""},
 
     {"HKGToggles", tr("Hyundai/Kia/Genesis Settings"), tr("Settings specific to <b>Hyundai</b>, <b>Kia</b>, and <b>Genesis</b> vehicles."), ""},
     {"NewLongAPI", tr("comma's New Longitudinal API"), tr("comma's new longitudinal control system that has shown great improvement with acceleration and braking, but has issues on some <b>Hyundai</b>/<b>Kia</b>/<b>Genesis</b> vehicles."), ""},
@@ -198,6 +199,8 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
       std::vector<QString> lockToggles{"LockDoors", "UnlockDoors"};
       std::vector<QString> lockToggleNames{tr("Lock"), tr("Unlock")};
       vehicleToggle = new FrogPilotButtonToggleControl(param, title, desc, icon, lockToggles, lockToggleNames);
+    } else if (param == "JeepBrakeHold") {
+      vehicleToggle = new ParamControl(param, title, desc, icon);
     } else if (param == "LockDoorsTimer") {
       std::map<float, QString> autoLockLabels;
       for (int i = 0; i <= 300; ++i) {

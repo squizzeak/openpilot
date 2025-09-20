@@ -14,6 +14,7 @@ from openpilot.common.params import Params
 from openpilot.selfdrive.car import gen_empty_fingerprint
 from openpilot.selfdrive.car.car_helpers import interfaces
 from openpilot.selfdrive.car.gm.values import GMFlags
+from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 from openpilot.selfdrive.car.interfaces import CarInterfaceBase
 from openpilot.selfdrive.car.mock.interface import CarInterface
 from openpilot.selfdrive.car.mock.values import CAR as MOCK
@@ -441,6 +442,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("VeryLongDistanceButtonControl", "6", 2, "0"),
   ("VisionTurnControl", "1", 1, "0"),
   ("VoltSNG", "0", 2, "0"),
+  ("JeepBrakeHold", "0", 2, "0"),
   ("WarningImmediateVolume", "101", 2, "101"),
   ("WarningSoftVolume", "101", 2, "101"),
   ("WheelIcon", "frog", 0, "stock"),
@@ -980,6 +982,13 @@ class FrogPilotVariables:
     toggle.unlock_doors = toyota_doors and (params.get_bool("UnlockDoors") if tuning_level >= level["UnlockDoors"] else default.get_bool("UnlockDoors"))
 
     toggle.volt_sng = toggle.car_model == "CHEVROLET_VOLT" and (params.get_bool("VoltSNG") if tuning_level >= level["VoltSNG"] else default.get_bool("VoltSNG"))
+
+    # Jeep-only Brake Hold toggle exposure to the runtime
+    try:
+      is_jeep = CP.carName == "chrysler" and CP.carFingerprint in CHRYSLER_JEEPS
+    except Exception:
+      is_jeep = False
+    toggle.jeep_brake_hold = is_jeep and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
 
     params_memory.put("FrogPilotToggles", json.dumps(toggle.__dict__))
     params_memory.remove("FrogPilotTogglesUpdated")
