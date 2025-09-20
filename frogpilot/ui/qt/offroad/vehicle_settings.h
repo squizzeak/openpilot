@@ -28,6 +28,7 @@ private:
   bool isGM;
   bool isHKG;
   bool isHKGCanFd;
+  bool isJeep;
   bool isToyota;
   bool isVolt;
   bool openpilotLongitudinalControlDisabled;
@@ -41,8 +42,7 @@ private:
   std::set<QString> hkgKeys = {"NewLongAPI", "TacoTuneHacks"};
   std::set<QString> longitudinalKeys = {"ExperimentalGMTune", "FrogsGoMoosTweak", "LongPitch", "NewLongAPI", "SNGHack", "VoltSNG"};
   std::set<QString> toyotaKeys = {"ClusterOffset", "FrogsGoMoosTweak", "LockDoorsTimer", "SNGHack", "ToyotaDoors"};
-  // Show globally for now; can refine Chrysler/Jeep gating later
-  // std::set<QString> chryslerKeys = {"JeepBrakeHold"};
+  std::set<QString> chryslerKeys = {"JeepBrakeHold"};
 
   std::set<QString> parentKeys;
 

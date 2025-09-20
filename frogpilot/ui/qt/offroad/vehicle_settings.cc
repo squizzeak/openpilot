@@ -283,6 +283,7 @@ void FrogPilotVehiclesPanel::showEvent(QShowEvent *event) {
   isGM = parent->isGM;
   isHKG = parent->isHKG;
   isHKGCanFd = parent->isHKGCanFd;
+  isJeep = parent->isJeep;
   isToyota = parent->isToyota;
   isVolt = parent->isVolt;
   openpilotLongitudinalControlDisabled = parent->openpilotLongitudinalControlDisabled || params.getBool("DisableOpenpilotLongitudinal");
@@ -319,6 +320,8 @@ void FrogPilotVehiclesPanel::updateToggles() {
       setVisible &= isHKG;
     } else if (toyotaKeys.find(key) != toyotaKeys.end()) {
       setVisible &= isToyota;
+    } else if (chryslerKeys.find(key) != chryslerKeys.end()) {
+      setVisible &= isJeep;
     }
 
     if (longitudinalKeys.find(key) != longitudinalKeys.end()) {
