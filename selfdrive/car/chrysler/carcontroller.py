@@ -130,7 +130,7 @@ class CarController(CarControllerBase):
 
         msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
                                                   set_standstill=False, decel=self.bh_hold_decel,
-                                                  brake_prep=False, bus=das_bus)
+                                                  brake_prep=False, max_gear=2, bus=das_bus)
         if msg is not None:
           can_sends.append(msg)
 
