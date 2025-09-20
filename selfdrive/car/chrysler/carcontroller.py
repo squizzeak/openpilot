@@ -105,15 +105,16 @@ class CarController(CarControllerBase):
       if self.bh_recent_acc_enabled and (not CS.cruiseState.enabled) and CS.out.standstill and CS.out.gearShifter == car.CarState.GearShifter.drive and not CS.out.brakePressed:
         self.bh_hold_active = True
 
-      # Disarm when ACC re-enables, vehicle moves, driver presses brake, or gear not drive
-      if CS.cruiseState.enabled or not CS.out.standstill or CS.out.brakePressed or CS.out.gearShifter != car.CarState.GearShifter.drive:
+      # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive
+      if CS.cruiseState.enabled or not CS.out.standstill or CS.out.brakePressed or CS.out.gasPressed or CS.out.gearShifter != car.CarState.GearShifter.drive:
         self.bh_hold_active = False
         if CS.cruiseState.enabled:
           self.bh_recent_acc_enabled = False
 
-      # While active, assert ACC_STANDSTILL and a small brake decel; send ~50 Hz
+      # While active, assert ACC_STANDSTILL and a small brake decel with slight dither; send ~50 Hz
       if self.bh_hold_active and (self.frame % 2 == 0) and getattr(CS, 'das_3', None):
-        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=-0.10, brake_prep=True)
+        decel = -0.10 if (self.frame // 2) % 2 == 0 else -0.11
+        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=decel, brake_prep=True)
         if msg is not None:
           can_sends.append(msg)
 
