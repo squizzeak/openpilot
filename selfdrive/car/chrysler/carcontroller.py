@@ -100,17 +100,17 @@ class CarController(CarControllerBase):
 
     if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
       # Track when ACC was enabled at standstill
-      if CS.cruiseState.enabled and CS.cruiseState.standstill:
+      if CS.out.cruiseState.enabled and CS.out.cruiseState.standstill:
         self.bh_recent_acc_enabled = True
 
       # Arm hold when ACC falls to disabled while still at standstill (SNG timeout)
-      if self.bh_recent_acc_enabled and (not CS.cruiseState.enabled) and CS.out.standstill and CS.out.gearShifter == car.CarState.GearShifter.drive and not CS.out.brakePressed:
+      if self.bh_recent_acc_enabled and (not CS.out.cruiseState.enabled) and CS.out.standstill and CS.out.gearShifter == car.CarState.GearShifter.drive and not CS.out.brakePressed:
         self.bh_hold_active = True
 
       # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive
-      if CS.cruiseState.enabled or not CS.out.standstill or CS.out.brakePressed or CS.out.gasPressed or CS.out.gearShifter != car.CarState.GearShifter.drive:
+      if CS.out.cruiseState.enabled or not CS.out.standstill or CS.out.brakePressed or CS.out.gasPressed or CS.out.gearShifter != car.CarState.GearShifter.drive:
         self.bh_hold_active = False
-        if CS.cruiseState.enabled:
+        if CS.out.cruiseState.enabled:
           self.bh_recent_acc_enabled = False
 
       # While active, request brake decel (no explicit standstill) with counter offsets like jvePilot; send ~50 Hz
@@ -123,7 +123,7 @@ class CarController(CarControllerBase):
         counter_offset = 2 if counter_changed else 3
 
         # Track decel like jvePilot
-        if CS.cruiseState.enabled:
+        if CS.out.cruiseState.enabled:
           self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', self.bh_hold_decel)) if CS.out.standstill else -2.0
         else:
           self.bh_hold_decel = self.bh_hold_decel if CS.out.standstill else -2.0
