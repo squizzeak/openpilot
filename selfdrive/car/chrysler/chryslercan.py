@@ -111,7 +111,7 @@ def create_cruise_buttons(packer, frame, bus, button_message, cancel=False, resu
   return packer.make_can_msg(button_message, bus, values)
 
 
-def create_das_3_brake_hold(packer, das_3_src: dict, set_standstill: bool, decel: float | None = None, brake_prep: bool = False, bus: int = 0):
+def create_das_3_brake_hold(packer, das_3_src: dict, counter_offset: int, set_standstill: bool, decel: float | None = None, brake_prep: bool = False, bus: int = 0):
   """Create a DAS_3 message based on the last received values, overriding only standstill/brake fields.
 
   - set_standstill: sets ACC_STANDSTILL when True to request brake hold at standstill
@@ -127,14 +127,16 @@ def create_das_3_brake_hold(packer, das_3_src: dict, set_standstill: bool, decel
 
   # Increment counter
   try:
-    values['COUNTER'] = (int(values.get('COUNTER', 0)) + 1) % 0x10
+    base_counter = int(values.get('COUNTER', 0))
+    values['COUNTER'] = (base_counter + (counter_offset % 0x10)) % 0x10
   except Exception:
-    values['COUNTER'] = 0
+    values['COUNTER'] = (counter_offset % 0x10)
 
   # Force ACC availability/active for the hold path and set standstill request
   values['ACC_AVAILABLE'] = 1
   values['ACC_ACTIVE'] = 1
-  values['ACC_STANDSTILL'] = 1 if set_standstill else 0
+  if set_standstill:
+    values['ACC_STANDSTILL'] = 1
 
   # Optional brake decel request
   if decel is not None:

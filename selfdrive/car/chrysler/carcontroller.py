@@ -25,6 +25,8 @@ class CarController(CarControllerBase):
     # Brake hold (Jeep SNG workaround)
     self.bh_recent_acc_enabled = False
     self.bh_hold_active = False
+    self.bh_hold_decel = -2.0
+    self.last_das_3_counter = -1
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
@@ -111,11 +113,24 @@ class CarController(CarControllerBase):
         if CS.cruiseState.enabled:
           self.bh_recent_acc_enabled = False
 
-      # While active, assert ACC_STANDSTILL and a small brake decel with slight dither; send ~50 Hz
+      # While active, request brake decel (no explicit standstill) with counter offsets like jvePilot; send ~50 Hz
       if self.bh_hold_active and (self.frame % 2 == 0) and getattr(CS, 'das_3', None):
-        decel = -0.10 if (self.frame // 2) % 2 == 0 else -0.11
-        das_bus = 2 if self.CP.carFingerprint in RAM_CARS else 0
-        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, set_standstill=True, decel=decel, brake_prep=True, bus=das_bus)
+        das_bus = 0  # Jeep/Pacifica on bus 0
+
+        # Track incoming counter to compute offset
+        counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
+        self.last_das_3_counter = CS.das_3.get('COUNTER')
+        counter_offset = 2 if counter_changed else 3
+
+        # Track decel like jvePilot
+        if CS.cruiseState.enabled:
+          self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', self.bh_hold_decel)) if CS.out.standstill else -2.0
+        else:
+          self.bh_hold_decel = self.bh_hold_decel if CS.out.standstill else -2.0
+
+        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
+                                                  set_standstill=False, decel=self.bh_hold_decel,
+                                                  brake_prep=False, bus=das_bus)
         if msg is not None:
           can_sends.append(msg)
 
