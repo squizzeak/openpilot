@@ -92,47 +92,45 @@ class CarController(CarControllerBase):
       can_sends.append(chryslercan.create_lkas_command(self.packer, self.CP, int(apply_steer), lkas_control_bit))
 
     # Jeep Brake Hold: keep standstill asserted (and optional small brake) after SNG auto-cancel
-    # This mirrors the Phase 2 plan without introducing general OP-long; only acts at standstill, gear in drive.
+    # This mirrors the jvePilot implementation for proper brake hold functionality
     try:
       is_jeep = (self.CP.carFingerprint in CHRYSLER_JEEPS)
     except Exception:
       is_jeep = False
 
     if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
-      # Track when ACC was enabled at standstill
-      if CS.out.cruiseState.enabled and CS.out.cruiseState.standstill:
-        self.bh_recent_acc_enabled = True
+      # Track DAS_3 counter changes for proper message timing
+      counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
+      self.last_das_3_counter = CS.das_3.get('COUNTER')
 
-      # Arm hold when ACC falls to disabled while still at standstill (SNG timeout)
-      if self.bh_recent_acc_enabled and (not CS.out.cruiseState.enabled) and CS.out.standstill and CS.out.gearShifter == car.CarState.GearShifter.drive and not CS.out.brakePressed:
-        self.bh_hold_active = True
+      # Brake hold activation logic (matching jvePilot)
+      if (not CS.brake_hold and
+          CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+        CS.brake_hold = True
 
-      # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive
-      if CS.out.cruiseState.enabled or not CS.out.standstill or CS.out.brakePressed or CS.out.gasPressed or CS.out.gearShifter != car.CarState.GearShifter.drive:
-        self.bh_hold_active = False
-        if CS.out.cruiseState.enabled:
-          self.bh_recent_acc_enabled = False
+      # Brake hold deactivation logic (matching jvePilot)
+      if (CS.brake_hold and
+          (not CC.enabled or not CS.out.cruiseState.enabled or
+           CS.acc_decelerating is False or not CS.out.standstill or
+           CC.cruiseControl.cancel or CS.out.gasPressed or
+           CS.out.brakePressed or not CS.forward_gear)):
+        CS.brake_hold = False
 
-      # While active, request brake decel (no explicit standstill) with counter offsets like jvePilot; send ~50 Hz
-      if self.bh_hold_active and (self.frame % 2 == 0) and getattr(CS, 'das_3', None):
+      # Send DAS_3 brake hold command when active
+      if CS.brake_hold and getattr(CS, 'das_3', None):
         das_bus = 0  # Jeep/Pacifica on bus 0
 
-        # Track incoming counter to compute offset
-        counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
-        self.last_das_3_counter = CS.das_3.get('COUNTER')
-        counter_offset = 2 if counter_changed else 3
-
         # Track decel like jvePilot
-        if CS.out.cruiseState.enabled:
-          self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', self.bh_hold_decel)) if CS.out.standstill else -2.0
+        if CS.cruise_active_actual:
+          self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
         else:
-          self.bh_hold_decel = self.bh_hold_decel if CS.out.standstill else -2.0
-
-        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
-                                                  set_standstill=False, decel=self.bh_hold_decel,
-                                                  brake_prep=False, max_gear=2, bus=das_bus)
-        if msg is not None:
-          can_sends.append(msg)
+          # Send brake hold message with proper parameters (matching jvePilot)
+          counter_offset = 2 if counter_changed else 3
+          msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
+                                                    set_standstill=False, decel=self.bh_hold_decel,
+                                                    brake_prep=False, max_gear=2, bus=das_bus)
+          if msg is not None:
+            can_sends.append(msg)
 
     self.frame += 1
 

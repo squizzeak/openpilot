@@ -25,6 +25,13 @@ class CarState(CarStateBase):
     self.prev_distance_button = 0
     self.distance_button = 0
 
+    # Brake hold state variables (matching jvePilot implementation)
+    self.brake_hold = False
+    self.cruise_active_actual = False
+    self.acc_decelerating = False
+    self.forward_gear = False
+    self.prev_acc_decel = 0.0
+
   def update(self, cp, cp_cam, frogpilot_toggles):
 
     ret = car.CarState.new_message()
@@ -85,6 +92,17 @@ class CarState(CarStateBase):
     ret.cruiseState.nonAdaptive = cp_cruise.vl["DAS_4"]["ACC_STATE"] in (1, 2)  # 1 NormalCCOn and 2 NormalCCSet
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
+
+    # Additional brake hold state tracking (matching jvePilot)
+    self.cruise_active_actual = ret.cruiseState.enabled
+    self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
+
+    # Track ACC deceleration for brake hold activation
+    current_acc_decel = cp_cruise.vl["DAS_3"].get("ACC_DECEL", 0.0)
+    self.acc_decelerating = (self.cruise_active_actual and
+                            current_acc_decel < self.prev_acc_decel - 0.1 and
+                            ret.cruiseState.standstill)
+    self.prev_acc_decel = current_acc_decel
 
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message
