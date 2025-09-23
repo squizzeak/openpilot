@@ -103,24 +103,24 @@ class CarController(CarControllerBase):
       counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
       self.last_das_3_counter = CS.das_3.get('COUNTER')
 
-      # Brake hold activation logic (matching jvePilot)
+      # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
       if (not CS.brake_hold and
           CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
         CS.brake_hold = True
 
-      # Brake hold deactivation logic (matching jvePilot)
+      # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
       if (CS.brake_hold and
           (not CC.enabled or not CS.out.cruiseState.enabled or
-           CS.acc_decelerating is False or not CS.out.standstill or
+           CS.acc_accelerating or not CS.out.standstill or
            CC.cruiseControl.cancel or CS.out.gasPressed or
            CS.out.brakePressed or not CS.forward_gear)):
         CS.brake_hold = False
 
-      # Send DAS_3 brake hold command when active
-      if CS.brake_hold and getattr(CS, 'das_3', None):
+      # Send DAS_3 brake hold command when active (matching jvePilot)
+      if CS.brake_hold:
         das_bus = 0  # Jeep/Pacifica on bus 0
 
-        # Track decel like jvePilot
+        # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
         if CS.cruise_active_actual:
           self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
         else:

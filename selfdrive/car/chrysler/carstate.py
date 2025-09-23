@@ -28,9 +28,9 @@ class CarState(CarStateBase):
     # Brake hold state variables (matching jvePilot implementation)
     self.brake_hold = False
     self.cruise_active_actual = False
+    self.acc_accelerating = False
     self.acc_decelerating = False
     self.forward_gear = False
-    self.prev_acc_decel = 0.0
 
   def update(self, cp, cp_cam, frogpilot_toggles):
 
@@ -93,16 +93,18 @@ class CarState(CarStateBase):
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
 
+    # Special brake hold logic: keep cruise "enabled" during brake hold (matching jvePilot)
+    if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self.brake_hold:
+      ret.cruiseState.enabled = ret.cruiseState.available  # stay enabled
+      ret.cruiseState.standstill = True  # we want to resume
+
     # Additional brake hold state tracking (matching jvePilot)
     self.cruise_active_actual = ret.cruiseState.enabled
     self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
 
-    # Track ACC deceleration for brake hold activation
-    current_acc_decel = cp_cruise.vl["DAS_3"].get("ACC_DECEL", 0.0)
-    self.acc_decelerating = (self.cruise_active_actual and
-                            current_acc_decel < self.prev_acc_decel - 0.1 and
-                            ret.cruiseState.standstill)
-    self.prev_acc_decel = current_acc_decel
+    # Track ACC acceleration/deceleration for brake hold (matching jvePilot)
+    self.acc_accelerating = self.das_3.get("ENGINE_TORQUE_REQUEST_MAX", 0) == 1
+    self.acc_decelerating = self.das_3.get("ACC_DECEL_REQ", 0) == 1
 
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message
