@@ -102,10 +102,6 @@ class CarState(CarStateBase):
     self.cruise_active_actual = ret.cruiseState.enabled
     self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
 
-    # Track ACC acceleration/deceleration for brake hold (matching jvePilot)
-    self.acc_accelerating = self.das_3.get("ENGINE_TORQUE_REQUEST_MAX", 0) == 1
-    self.acc_decelerating = self.das_3.get("ACC_DECEL_REQ", 0) == 1
-
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message
       self.auto_high_beam = cp_cam.vl["DAS_6"]['AUTO_HIGH_BEAM_ON']
@@ -124,6 +120,10 @@ class CarState(CarStateBase):
 
     # Preserve the raw DAS_3 fields to enable safe modification and retransmission (e.g., brake hold)
     self.das_3 = dict(cp_cruise.vl["DAS_3"]) if "DAS_3" in cp_cruise.vl else {}
+
+    # Track ACC acceleration/deceleration for brake hold (matching jvePilot)
+    self.acc_accelerating = self.das_3.get("ENGINE_TORQUE_REQUEST_MAX", 0) == 1
+    self.acc_decelerating = self.das_3.get("ACC_DECEL_REQ", 0) == 1
 
     # FrogPilot CarState functions
     fp_ret.brakeLights = bool(cp.vl["ESP_1"]["BRAKE_PRESSED_ACC"])
