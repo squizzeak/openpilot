@@ -113,6 +113,7 @@ class CarController(CarControllerBase):
            CC.cruiseControl.cancel or CS.out.gasPressed or
            CS.out.brakePressed or not CS.forward_gear)):
         CS.brake_hold = False
+        return
 
       # Send DAS_3 brake hold command when active (matching jvePilot)
       if CS.brake_hold:
