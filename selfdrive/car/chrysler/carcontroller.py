@@ -23,8 +23,6 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(CP)
 
     # Brake hold (Jeep SNG workaround)
-    self.bh_recent_acc_enabled = False
-    self.bh_hold_active = False
     self.bh_hold_decel = -2.0
     self.last_das_3_counter = -1
 
