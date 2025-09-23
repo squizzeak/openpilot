@@ -23,7 +23,7 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(CP)
 
     # Brake hold (Jeep SNG workaround)
-    self.bh_hold_decel = -2.0
+    self.brake_hold_decel = 0
     self.last_das_3_counter = -1
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
@@ -120,12 +120,12 @@ class CarController(CarControllerBase):
 
         # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
         if CS.cruise_active_actual:
-          self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
+          self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
         else:
           # Send brake hold message with proper parameters (matching jvePilot)
           counter_offset = 2 if counter_changed else 3
           msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
-                                                    set_standstill=False, decel=self.bh_hold_decel,
+                                                    set_standstill=False, decel=self.brake_hold_decel,
                                                     brake_prep=False, max_gear=2, bus=das_bus)
           if msg is not None:
             can_sends.append(msg)
