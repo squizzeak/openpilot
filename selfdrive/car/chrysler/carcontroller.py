@@ -36,15 +36,15 @@ class CarController(CarControllerBase):
     if (self.frame - self.last_button_frame)*DT_CTRL > 0.05:
       das_bus = 2 if self.CP.carFingerprint in RAM_CARS else 0
 
-      # ACC cancellation
-      if CC.cruiseControl.cancel:
-        self.last_button_frame = self.frame
-        can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, cancel=True))
+      # ACC cancellation (disabled for brake hold compatibility - matches jvePilot)
+      # if CC.cruiseControl.cancel:
+      #   self.last_button_frame = self.frame
+      #   can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, cancel=True))
 
-      # ACC resume from standstill
-      elif CC.cruiseControl.resume:
-        self.last_button_frame = self.frame
-        can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, resume=True))
+      # ACC resume from standstill (disabled for brake hold compatibility - matches jvePilot)
+      # elif CC.cruiseControl.resume:
+      #   self.last_button_frame = self.frame
+      #   can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, resume=True))
 
     # HUD alerts
     if self.frame % 25 == 0:
