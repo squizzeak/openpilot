@@ -97,39 +97,7 @@ class CarController(CarControllerBase):
       is_jeep = False
 
     if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
-      # Track DAS_3 counter changes for proper message timing
-      counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
-      self.last_das_3_counter = CS.das_3.get('COUNTER')
-
-      # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
-      if (not CS.brake_hold and
-          CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
-        CS.brake_hold = True
-
-      # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
-      if (CS.brake_hold and
-          (not CC.enabled or not CS.out.cruiseState.enabled or
-           CS.acc_accelerating or not CS.out.standstill or
-           CC.cruiseControl.cancel or CS.out.gasPressed or
-           CS.out.brakePressed or not CS.forward_gear)):
-        CS.brake_hold = False
-        return
-
-      # Send DAS_3 brake hold command when active (matching jvePilot)
-      if CS.brake_hold:
-        das_bus = 0  # Jeep/Pacifica on bus 0
-
-        # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
-        if CS.cruise_active_actual:
-          self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
-        else:
-          # Send brake hold message with proper parameters (matching jvePilot)
-          counter_offset = 2 if counter_changed else 3
-          msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
-                                                    set_standstill=False, decel=self.brake_hold_decel,
-                                                    brake_prep=False, max_gear=2, bus=das_bus)
-          if msg is not None:
-            can_sends.append(msg)
+      self.brake_hold(CC, CS, can_sends)
 
     self.frame += 1
 
@@ -138,3 +106,38 @@ class CarController(CarControllerBase):
     new_actuators.steerOutputCan = self.apply_steer_last
 
     return new_actuators, can_sends
+
+  def brake_hold(self, CC, CS, can_sends):
+    # Track DAS_3 counter changes for proper message timing
+    counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
+    self.last_das_3_counter = CS.das_3.get('COUNTER')
+
+    # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
+    if (not CS.brake_hold and
+        CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+      CS.brake_hold = True
+
+    # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
+    if (CS.brake_hold and
+        (not CC.enabled or not CS.out.cruiseState.enabled or
+         CS.acc_accelerating or not CS.out.standstill or
+         CC.cruiseControl.cancel or CS.out.gasPressed or
+         CS.out.brakePressed or not CS.forward_gear)):
+      CS.brake_hold = False
+      return
+
+    # Send DAS_3 brake hold command when active (matching jvePilot)
+    if CS.brake_hold:
+      das_bus = 0  # Jeep/Pacifica on bus 0
+
+      # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
+      if CS.cruise_active_actual:
+        self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
+      else:
+        # Send brake hold message with proper parameters (matching jvePilot)
+        counter_offset = 2 if counter_changed else 3
+        msg = chryslercan.create_das_3_brake_hold(self.packer, CS.das_3, counter_offset,
+                                                  set_standstill=False, decel=self.brake_hold_decel,
+                                                  brake_prep=False, max_gear=2, bus=das_bus)
+        if msg is not None:
+          can_sends.append(msg)
