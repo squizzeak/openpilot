@@ -25,6 +25,7 @@ class CarController(CarControllerBase):
     # Brake hold (Jeep SNG workaround)
     self.brake_hold_decel = 0
     self.last_das_3_counter = -1
+    self.brake_hold_enabled = False  # Will be set in update based on frogpilot_toggles
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
@@ -97,7 +98,11 @@ class CarController(CarControllerBase):
       is_jeep = False
 
     if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
+      # Set brake_hold_enabled flag like jvePilot
+      self.brake_hold_enabled = True
       self.brake_hold(CC, CS, can_sends)
+    else:
+      self.brake_hold_enabled = False
 
     self.frame += 1
 
@@ -114,7 +119,8 @@ class CarController(CarControllerBase):
 
     # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
     if (not CS.brake_hold and
-        CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+        CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill and
+        self.brake_hold_enabled):
       CS.brake_hold = True
 
     # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
