@@ -111,42 +111,30 @@ def create_cruise_buttons(packer, frame, bus, button_message, cancel=False, resu
   return packer.make_can_msg(button_message, bus, values)
 
 
-def create_das_3_brake_hold(packer, das_3_src: dict, counter_offset: int, set_standstill: bool,
-                            decel: float | None = None, brake_prep: bool = False,
-                            max_gear: int | None = None, bus: int = 0):
-  """Create a DAS_3 message based on the last received values, overriding only standstill/brake fields.
 
-  - set_standstill: sets ACC_STANDSTILL when True to request brake hold at standstill
-  - decel: optional small negative accel request; if provided, sets ACC_DECEL_REQ and ACC_DECEL
-  - brake_prep: pass-through to ACC_BRK_PREP if decel is requested
-
-  Always increments the COUNTER by 1 to avoid re-sending identical counters.
-  """
-  if not das_3_src:
-    return None
-
-  values = das_3_src.copy()
-
-  # Increment counter
-  try:
-    base_counter = int(values.get('COUNTER', 0))
-    values['COUNTER'] = (base_counter + (counter_offset % 0x10)) % 0x10
-  except Exception:
-    values['COUNTER'] = (counter_offset % 0x10)
-
-  # Force ACC availability/active for the hold path and set standstill request
+def das_3_command(packer, counter_offset, go, torque_req, torque, max_gear, stop, brake, brake_prep, das_3):
+  """Create DAS_3 command message like jvePilot implementation"""
+  values = das_3.copy()  # forward what we parsed
   values['ACC_AVAILABLE'] = 1
   values['ACC_ACTIVE'] = 1
-  if set_standstill:
-    values['ACC_STANDSTILL'] = 1
+  values['COUNTER'] = (das_3['COUNTER'] + counter_offset) % 0x10
 
-  # Optional brake decel request
-  if decel is not None:
+  if go is not None:
+    values['ACC_GO'] = go
+
+  if stop is not None:
+    values['ACC_STANDSTILL'] = stop
+
+  if brake is not None:
     values['ACC_DECEL_REQ'] = 1
-    values['ACC_DECEL'] = float(decel)
-    values['ACC_BRK_PREP'] = 1 if brake_prep else 0
+    values['ACC_DECEL'] = brake
+    values['ACC_BRK_PREP'] = brake_prep
+
+  if torque is not None:
+    values['ENGINE_TORQUE_REQUEST_MAX'] = torque_req
+    values['ENGINE_TORQUE_REQUEST'] = torque
 
   if max_gear is not None:
-    values['GR_MAX_REQ'] = int(max_gear)
+    values['GR_MAX_REQ'] = max_gear
 
-  return packer.make_can_msg("DAS_3", bus, values)
+  return packer.make_can_msg("DAS_3", 0, values)
