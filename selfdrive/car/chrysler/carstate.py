@@ -93,6 +93,9 @@ class CarState(CarStateBase):
     ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
     ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
 
+    # Update current gear state BEFORE brake hold logic (like jvePilot)
+    self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
+
     # Special brake hold logic: keep cruise "enabled" during brake hold (matching jvePilot)
     if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self.brake_hold:
       ret.cruiseState.enabled = ret.cruiseState.available  # stay enabled
@@ -100,7 +103,6 @@ class CarState(CarStateBase):
 
     # Additional brake hold state tracking (matching jvePilot)
     self.cruise_active_actual = ret.cruiseState.enabled
-    self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
 
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message

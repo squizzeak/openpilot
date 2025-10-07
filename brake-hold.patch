@@ -1,0 +1,74 @@
+# Brake Hold Patch - Manual Retrieval Required
+
+Due to security restrictions, the patch content could not be automatically fetched.
+
+## Manual Retrieval Instructions
+
+### Option 1: Using curl (Recommended)
+```bash
+curl -o brake-hold.patch "https://github.com/j-vanetten/openpilot/commit/f75abf2363c983c8d49ed411634254756c17f797.patch"
+```
+
+### Option 2: Using wget
+```bash
+wget -O brake-hold.patch "https://github.com/j-vanetten/openpilot/commit/f75abf2363c983c8d49ed411634254756c17f797.patch"
+```
+
+### Option 3: Using the existing Python script
+```bash
+python3 fetch_and_apply_diff.py
+```
+
+### Option 4: Browser download
+1. Open: https://github.com/j-vanetten/openpilot/commit/f75abf2363c983c8d49ed411634254756c17f797.patch
+2. Copy the content
+3. Save to this file: brake-hold.patch
+
+## Patch Analysis Commands
+
+Once you have the patch content, use these commands to analyze it:
+
+### View patch contents
+```bash
+less brake-hold.patch
+```
+
+### Extract file list
+```bash
+grep "^diff --git" brake-hold.patch | cut -d' ' -f3 | sed 's/^a\///'
+```
+
+### View statistics
+```bash
+diffstat brake-hold.patch
+```
+
+### Count changes
+```bash
+grep "^+" brake-hold.patch | wc -l  # Lines added
+grep "^-" brake-hold.patch | wc -l  # Lines removed
+```
+
+## Files to Check in Local Codebase
+
+Based on typical brake hold implementations, check these file patterns in your local codebase:
+
+- `selfdrive/controls/controlsd.py`
+- `selfdrive/controls/lib/longitudinal*`
+- `selfdrive/car/*/carstate.py`
+- `selfdrive/car/*/carcontroller.py`
+- `selfdrive/car/*/interface.py`
+- `selfdrive/car/*/values.py`
+- `selfdrive/ui/qt/onroad.cc`
+- `common/params.py`
+
+## Next Steps After Patch Retrieval
+
+1. **Analyze the actual changes** in the patch file
+2. **Update brake-hold-analysis.md** with specific file changes
+3. **Map changes to local codebase** structure
+4. **Implement changes incrementally** with testing
+5. **Validate functionality** before committing
+
+---
+**Replace this file content with the actual patch after manual retrieval**

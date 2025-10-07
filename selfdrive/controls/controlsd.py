@@ -20,6 +20,7 @@ from openpilot.common.swaglog import cloudlog
 
 from openpilot.selfdrive.car.car_helpers import get_car_interface, get_startup_event
 from openpilot.selfdrive.car.gm.values import CC_ONLY_CAR, GMFlags
+from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 from openpilot.selfdrive.controls.lib.alertmanager import AlertManager, set_offroad_alert
 from openpilot.selfdrive.controls.lib.drive_helpers import VCruiseHelper, clip_curvature
 from openpilot.selfdrive.controls.lib.events import Events, ET
@@ -394,7 +395,12 @@ class Controls:
 
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM
-      cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pcmCruise)
+      # Exception: Skip mismatch detection during Jeep brake hold to allow DAS_3 brake commands
+      is_jeep_brake_hold = (self.CP.carFingerprint in CHRYSLER_JEEPS and
+                           getattr(self.frogpilot_toggles, 'jeep_brake_hold', False) and
+                           hasattr(CS, 'brake_hold') and CS.brake_hold)
+
+      cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pcmCruise) and not is_jeep_brake_hold
       self.cruise_mismatch_counter = self.cruise_mismatch_counter + 1 if cruise_mismatch else 0
       if self.cruise_mismatch_counter > int(6. / DT_CTRL):
         self.events.add(EventName.cruiseMismatch)
