@@ -30,7 +30,6 @@ from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, S
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
 from openpilot.selfdrive.controls.lib.vehicle_model import VehicleModel
-from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 
 from openpilot.system.hardware import HARDWARE
 
@@ -166,11 +165,6 @@ class Controls:
     self.recalibrating_seen = False
 
     self.can_log_mono_time = 0
-
-    # Brake Hold (Jeep SNG workaround): internal state
-    self._bh_armed = False
-    self._bh_recent_cruise_enabled = False
-    self._bh_last_resume_frame = -99999
 
     if car_recognized and not self.CP.passive and self.CP.secOcRequired and not self.CP.secOcKeyAvailable:
       self.startup_event = EventName.startupNoSecOcKey
@@ -790,34 +784,6 @@ class Controls:
     speeds = self.sm['longitudinalPlan'].speeds
     if len(speeds):
       CC.cruiseControl.resume = self.enabled and CS.cruiseState.standstill and speeds[-1] > 0.1
-
-    # Jeep Brake Hold: auto-resume after ACC standstill auto-cancel (phase 1, no added braking)
-    try:
-      is_jeep = (self.CP.carName == 'chrysler') and (self.CP.carFingerprint in CHRYSLER_JEEPS)
-    except Exception:
-      is_jeep = False
-
-    if is_jeep and getattr(self.frogpilot_toggles, 'jeep_brake_hold', False):
-      # Remember if ACC was enabled while at standstill recently
-      if CS.cruiseState.enabled and CS.cruiseState.standstill:
-        self._bh_recent_cruise_enabled = True
-
-      # Arm on falling edge of ACC enabled while still at standstill (typical SNG timeout cancel)
-      if self._bh_recent_cruise_enabled and (not CS.cruiseState.enabled) and CS.standstill \
-         and CS.gearShifter == car.CarState.GearShifter.drive and not CS.brakePressed:
-        self._bh_armed = True
-
-      # Disarm when no longer applicable or ACC re-enabled
-      if CS.cruiseState.enabled or not CS.standstill or CS.brakePressed or CS.gearShifter != car.CarState.GearShifter.drive:
-        self._bh_armed = False
-        if CS.cruiseState.enabled:
-          self._bh_recent_cruise_enabled = False
-
-      # While armed, when planner indicates movement, send RESUME at ~1 Hz until ACC re-engages
-      if self._bh_armed and len(speeds) and speeds[-1] > 0.1:
-        if (self.sm.frame - self._bh_last_resume_frame) * DT_CTRL > 1.0:
-          CC.cruiseControl.resume = True
-          self._bh_last_resume_frame = self.sm.frame
 
     hudControl = CC.hudControl
     hudControl.setSpeed = float(self.v_cruise_helper.v_cruise_cluster_kph * CV.KPH_TO_MS)
