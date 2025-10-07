@@ -23,7 +23,7 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(CP)
 
     # Brake hold (Jeep SNG workaround)
-    self.brake_hold_decel = 0
+    self.brake_hold_decel = -2.0  # Default brake decel value like jvePilot
     self.last_das_3_counter = -1
     self.brake_hold_enabled = False  # Will be set in update based on frogpilot_toggles
 
