@@ -390,9 +390,18 @@ class Controls:
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM
       # Exception: Skip mismatch detection during Jeep brake hold to allow DAS_3 brake commands
-      is_jeep_brake_hold = (self.CP.carFingerprint in CHRYSLER_JEEPS and
-                           getattr(self.frogpilot_toggles, 'jeep_brake_hold', False) and
-                           hasattr(CS, 'brake_hold') and CS.brake_hold)
+      is_jeep = self.CP.carFingerprint in CHRYSLER_JEEPS
+      brake_hold_enabled = is_jeep and getattr(self.frogpilot_toggles, 'jeep_brake_hold', False)
+
+      # Check if brake hold is active OR should be active (predictive check)
+      brake_hold_conditions = (brake_hold_enabled and CS.standstill and
+                              CS.gearShifter == car.CarState.GearShifter.drive and
+                              not CS.brakePressed)
+
+      # Active brake hold or conditions met for brake hold
+      is_jeep_brake_hold = (brake_hold_conditions and
+                           (hasattr(CS, 'brake_hold') and CS.brake_hold or
+                            not self.enabled))  # Predictive: if openpilot disabled at standstill
 
       cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pcmCruise) and not is_jeep_brake_hold
       self.cruise_mismatch_counter = self.cruise_mismatch_counter + 1 if cruise_mismatch else 0
