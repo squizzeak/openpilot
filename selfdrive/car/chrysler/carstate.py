@@ -25,12 +25,9 @@ class CarState(CarStateBase):
     self.prev_distance_button = 0
     self.distance_button = 0
 
-    # Brake hold state variables (matching jvePilot implementation)
-    self.brake_hold = False
-    self.cruise_active_actual = False
-    self.acc_accelerating = False
-    self.acc_decelerating = False
-    self.forward_gear = False
+    # Brake hold state tracking (matching jvePilot implementation)
+    self.cruise_active_actual = False  # Track actual ACC state before manipulation
+    self.forward_gear = False  # Track if in drive gear
 
   def update(self, cp, cp_cam, frogpilot_toggles):
 
@@ -96,12 +93,7 @@ class CarState(CarStateBase):
     # Update current gear state BEFORE brake hold logic (like jvePilot)
     self.forward_gear = ret.gearShifter == car.CarState.GearShifter.drive
 
-    # Special brake hold logic: keep cruise "enabled" during brake hold (matching jvePilot)
-    if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self.brake_hold:
-      ret.cruiseState.enabled = ret.cruiseState.available  # stay enabled
-      ret.cruiseState.standstill = True  # we want to resume
-
-    # Additional brake hold state tracking (matching jvePilot)
+    # Capture ACTUAL cruise state BEFORE any manipulation for brake hold logic (matching jvePilot)
     self.cruise_active_actual = ret.cruiseState.enabled
 
     if self.CP.carFingerprint in RAM_CARS:
@@ -120,12 +112,8 @@ class CarState(CarStateBase):
     self.lkas_car_model = cp_cam.vl["DAS_6"]["CAR_MODEL"]
     self.button_counter = cp.vl[self.button_message]["COUNTER"]
 
-    # Preserve the raw DAS_3 fields to enable safe modification and retransmission (e.g., brake hold)
+    # Preserve the raw DAS_3 fields to enable safe modification and retransmission for brake hold (matching jvePilot)
     self.das_3 = dict(cp_cruise.vl["DAS_3"]) if "DAS_3" in cp_cruise.vl else {}
-
-    # Track ACC acceleration/deceleration for brake hold (matching jvePilot)
-    self.acc_accelerating = self.das_3.get("ENGINE_TORQUE_REQUEST_MAX", 0) == 1
-    self.acc_decelerating = self.das_3.get("ACC_DECEL_REQ", 0) == 1
 
     # FrogPilot CarState functions
     fp_ret.brakeLights = bool(cp.vl["ESP_1"]["BRAKE_PRESSED_ACC"])
