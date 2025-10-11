@@ -6,6 +6,7 @@ from openpilot.selfdrive.car.chrysler import chryslercan
 from openpilot.selfdrive.car.chrysler.values import RAM_CARS, RAM_DT, CarControllerParams, ChryslerFlags, CAR
 from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 from openpilot.selfdrive.car.interfaces import CarControllerBase
+from openpilot.common.swaglog import cloudlog
 
 
 class CarController(CarControllerBase):
@@ -117,6 +118,8 @@ class CarController(CarControllerBase):
   def brake_hold(self, CC, CS, can_sends):
     # Track when ACC was enabled at standstill (matching jvePilot)
     if CS.out.cruiseState.enabled and CS.out.standstill:
+      if not self.bh_recent_acc_enabled:
+        cloudlog.info(f"Brake hold: ACC enabled at standstill - arming")
       self.bh_recent_acc_enabled = True
 
     # Arm hold when ACC falls to disabled while still at standstill (SNG timeout) (matching jvePilot)
@@ -125,7 +128,13 @@ class CarController(CarControllerBase):
         CS.out.standstill and
         CS.forward_gear and
         not CS.out.brakePressed):
+      if not self.bh_hold_active:
+        cloudlog.info(f"Brake hold: ACTIVATING - ACC disabled at standstill")
       self.bh_hold_active = True
+
+    # Debug logging for activation conditions
+    if self.bh_recent_acc_enabled and not self.bh_hold_active:
+      cloudlog.info(f"Brake hold: Not activating - cruise_actual={CS.cruise_active_actual}, standstill={CS.out.standstill}, fwd_gear={CS.forward_gear}, brake={CS.out.brakePressed}")
 
     # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive (matching jvePilot)
     if (CS.out.cruiseState.enabled or
@@ -133,6 +142,8 @@ class CarController(CarControllerBase):
         CS.out.brakePressed or
         CS.out.gasPressed or
         not CS.forward_gear):
+      if self.bh_hold_active:
+        cloudlog.info(f"Brake hold: DEACTIVATING - cruise={CS.out.cruiseState.enabled}, standstill={CS.out.standstill}, brake={CS.out.brakePressed}, gas={CS.out.gasPressed}, gear={CS.forward_gear}")
       self.bh_hold_active = False
       if CS.out.cruiseState.enabled:
         self.bh_recent_acc_enabled = False
@@ -163,3 +174,7 @@ class CarController(CarControllerBase):
                                       False,  # brake_prep
                                       CS.das_3)
       can_sends.append(msg)
+
+      # Log every 50 frames (~1 second) to avoid spam
+      if self.frame % 50 == 0:
+        cloudlog.info(f"Brake hold: Sending DAS_3 - decel={self.brake_hold_decel}, counter_offset={counter_offset}")
