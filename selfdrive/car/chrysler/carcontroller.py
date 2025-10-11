@@ -132,8 +132,8 @@ class CarController(CarControllerBase):
         cloudlog.info(f"Brake hold: ACTIVATING - ACC disabled at standstill")
       self.bh_hold_active = True
 
-    # Debug logging for activation conditions
-    if self.bh_recent_acc_enabled and not self.bh_hold_active:
+    # Debug logging for activation conditions (log every 50 frames to avoid spam)
+    if self.bh_recent_acc_enabled and not self.bh_hold_active and self.frame % 50 == 0:
       cloudlog.info(f"Brake hold: Not activating - cruise_actual={CS.cruise_active_actual}, standstill={CS.out.standstill}, fwd_gear={CS.forward_gear}, brake={CS.out.brakePressed}")
 
     # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive (matching jvePilot)
