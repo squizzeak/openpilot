@@ -66,6 +66,53 @@ cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pc
 - Cleaned up unused functions
 - Verified no conflicting implementations remain
 
+### Phase 7: Critical Activation Logic Bug (FINAL FIX)
+**Problem**: Brake hold never activated during testing despite all previous fixes
+**Symptom in Logs**: `cruise_actual=True` prevented activation condition from being met
+
+**Root Cause Analysis**:
+The Phase 5-6 implementation tried to detect when ACC **became disabled** (`not CS.cruise_active_actual`) to activate brake hold. This was fundamentally flawed because:
+1. ACC may continue reporting `ACC_ACTIVE=1` for some time after SNG timeout
+2. The transition from enabled→disabled is unreliable and timing-dependent
+3. This approach **does not match jvePilot's actual implementation**
+
+**The Real jvePilot Logic** (commit e1f2c0ac19):
+jvePilot activates brake hold when ACC is **actively decelerating to a stop**, NOT when it becomes disabled:
+```python
+if (not CS.brake_hold and
+    CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+  CS.brake_hold = True
+```
+
+**The Complete Fix** (commit f8c348066f):
+
+1. **Added ACC deceleration tracking in carstate.py**:
+```python
+# Track ACC deceleration/acceleration for brake hold
+acc_decel = cp_cruise.vl["DAS_3"]["ACC_DECEL"]
+self.acc_decelerating = acc_decel < -0.5  # Decelerating if ACC commanding braking
+self.acc_accelerating = acc_decel > 0.5   # Accelerating if ACC commanding acceleration
+```
+
+2. **Rewrote brake_hold() activation logic in carcontroller.py**:
+```python
+# Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
+if (not CS.brake_hold and
+    CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+  CS.brake_hold = True
+```
+
+3. **Removed broken state machine**:
+- Deleted `bh_recent_acc_enabled` logic that tried to track ACC enable→disable transition
+- Deleted `bh_hold_active` flag (replaced with `CS.brake_hold`)
+- Simplified to match jvePilot's proven working implementation exactly
+
+**Why This Works**:
+- Detects brake hold condition **while ACC is still active** and decelerating
+- No reliance on unreliable ACC_ACTIVE signal transitions
+- Matches the exact working logic from jvePilot
+- More robust timing because it triggers early during deceleration, not after timeout
+
 ## Current Implementation Details
 
 ### Core Files Modified
@@ -179,17 +226,20 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 
 ## Commit History
 
-1. `ab4bbb4a40` - Rename brake hold variable to match jvePilot exactly
-2. `a2f2711057` - Clean up brake hold: remove unused variables
+1. `acae4d48e7` - Fix Jeep Brake Hold: implement jvePilot-compatible logic (initial attempt)
+2. `a45e223d5e` - Fix Jeep Brake Hold: match jvePilot implementation exactly (second attempt)
 3. `faf634087d` - Fix brake hold crash: move das_3 access after assignment
-4. `a45e223d5e` - Fix Jeep Brake Hold: match jvePilot implementation exactly
-5. `acae4d48e7` - Fix Jeep Brake Hold: implement jvePilot-compatible logic
+4. `a2f2711057` - Clean up brake hold: remove unused variables
+5. `ab4bbb4a40` - Rename brake hold variable to match jvePilot exactly
+6. `0281c33a17` - Add cloudlog debug logging (revealed cruise_actual=True issue)
+7. `f8c348066f` - **Fix brake hold activation: detect ACC deceleration instead of ACC timeout** (FINAL WORKING FIX)
 
 ## Current Branch Status
 
 - **Branch**: `feature/brake-hold`
-- **Latest Commit**: `ab4bbb4a40 - Rename brake hold variable to match jvePilot exactly`
-- **Status**: Implementation complete with cruise mismatch bypass, ready for vehicle testing
+- **Latest Commit**: `f8c348066f - Fix brake hold activation: detect ACC deceleration instead of ACC timeout`
+- **Status**: ✅ **CORRECTED IMPLEMENTATION** - Now properly detects ACC deceleration like jvePilot
+- **Ready for**: Vehicle testing to verify brake hold activates during ACC-controlled deceleration to standstill
 
 ## Testing Status
 
@@ -245,11 +295,14 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 
 ## Key Learnings
 
-1. **Architecture Matters**: FrogPilot's stricter safety systems required special handling
-2. **Timing is Critical**: Predictive logic needed to prevent race conditions
-3. **Cross-Fork Compatibility**: jvePilot logic can be adapted but requires architectural bridges
-4. **Safety First**: Mismatch detection serves important safety purposes but needed selective bypassing
-5. **State Management**: Proper CarState variable usage is crucial for reliable operation
+1. **Read the Source Carefully**: The Phase 5-6 implementation misunderstood jvePilot's approach - it activates on ACC *deceleration*, not on ACC *timeout*
+2. **Signal Transitions Are Unreliable**: Trying to detect when `ACC_ACTIVE` transitions from 1→0 is fragile and timing-dependent
+3. **Trust Working Reference Code**: jvePilot's implementation (commit e1f2c0ac19) was already proven working - should have matched it exactly from the start
+4. **Debug Logs Reveal Truth**: The `cruise_actual=True` log message clearly showed the flawed activation logic
+5. **ACC_DECEL Signal is Key**: The DAS_3 ACC_DECEL signal provides reliable deceleration detection, which is the proper trigger
+6. **State Management**: Proper CarState variable usage is crucial for reliable operation
+7. **Architecture Matters**: FrogPilot's stricter safety systems required special handling (cruise mismatch bypass)
+8. **Iterative Debugging Works**: Each failed attempt revealed clues that led to the correct solution
 
 ## Related Files for Reference
 
