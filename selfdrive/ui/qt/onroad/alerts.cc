@@ -6,7 +6,7 @@
 #include "selfdrive/ui/qt/util.h"
 
 void OnroadAlerts::updateState(const UIState &s, const FrogPilotUIState &fs) {
-  Alert a = getAlert(*(s.sm), *(fs.sm), s.scene.started_frame);
+  Alert a = getAlert(*(s.sm), *(fs.sm), s.scene.started_frame, fs.frogpilot_scene.frogpilot_toggles);
   if (!alert.equal(a)) {
     alert = a;
     update();
@@ -22,7 +22,7 @@ void OnroadAlerts::clear() {
   // FrogPilot variables
 }
 
-OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, const SubMaster &fpsm, uint64_t started_frame) {
+OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, const SubMaster &fpsm, uint64_t started_frame, const QJsonObject &frogpilot_toggles) {
   const cereal::SelfdriveState::Reader &ss = sm["selfdriveState"].getSelfdriveState();
   const uint64_t selfdrive_frame = sm.rcv_frame("selfdriveState");
 

@@ -34,7 +34,7 @@ protected:
   };
 
   void paintEvent(QPaintEvent*) override;
-  OnroadAlerts::Alert getAlert(const SubMaster &sm, const SubMaster &fpsm, uint64_t started_frame);
+  OnroadAlerts::Alert getAlert(const SubMaster &sm, const SubMaster &fpsm, uint64_t started_frame, const QJsonObject &frogpilot_toggles);
 
   QColor bg;
   Alert alert = {};
