@@ -26,8 +26,11 @@ class CarState(CarStateBase):
     self.distance_button = 0
 
     # Brake hold state tracking (matching jvePilot implementation)
+    self.brake_hold = False  # Track if brake hold is active
     self.cruise_active_actual = False  # Track actual ACC state before manipulation
     self.forward_gear = False  # Track if in drive gear
+    self.acc_decelerating = False  # Track if ACC is commanding deceleration
+    self.acc_accelerating = False  # Track if ACC is commanding acceleration
 
   def update(self, cp, cp_cam, frogpilot_toggles):
 
@@ -95,6 +98,12 @@ class CarState(CarStateBase):
 
     # Capture ACTUAL cruise state BEFORE any manipulation for brake hold logic (matching jvePilot)
     self.cruise_active_actual = ret.cruiseState.enabled
+
+    # Track ACC deceleration/acceleration for brake hold (matching jvePilot)
+    # ACC_DECEL is in m/s^2, negative values mean deceleration
+    acc_decel = cp_cruise.vl["DAS_3"]["ACC_DECEL"]
+    self.acc_decelerating = acc_decel < -0.5  # Decelerating if ACC commanding braking
+    self.acc_accelerating = acc_decel > 0.5   # Accelerating if ACC commanding acceleration
 
     if self.CP.carFingerprint in RAM_CARS:
       # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message

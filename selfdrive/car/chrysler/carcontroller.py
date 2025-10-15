@@ -24,11 +24,8 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(CP)
 
     # Brake hold (Jeep SNG workaround) - matching jvePilot implementation
-    self.brake_hold_decel = -2.0  # Default brake decel value like jvePilot
+    self.bh_hold_decel = -2.0  # Default brake decel value like jvePilot
     self.last_das_3_counter = -1
-    self.brake_hold_enabled = False  # Will be set in update based on frogpilot_toggles
-    self.bh_recent_acc_enabled = False  # Track if ACC was recently enabled at standstill
-    self.bh_hold_active = False  # Track if brake hold is currently active
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
@@ -100,12 +97,10 @@ class CarController(CarControllerBase):
     except Exception:
       is_jeep = False
 
+    # Jeep Brake Hold: keep standstill asserted (and optional small brake) after SNG auto-cancel
+    # This mirrors the jvePilot implementation exactly
     if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
-      # Set brake_hold_enabled flag like jvePilot
-      self.brake_hold_enabled = True
       self.brake_hold(CC, CS, can_sends)
-    else:
-      self.brake_hold_enabled = False
 
     self.frame += 1
 
@@ -116,65 +111,52 @@ class CarController(CarControllerBase):
     return new_actuators, can_sends
 
   def brake_hold(self, CC, CS, can_sends):
-    # Track when ACC was enabled at standstill (matching jvePilot)
-    if CS.out.cruiseState.enabled and CS.out.standstill:
-      if not self.bh_recent_acc_enabled:
-        cloudlog.info(f"Brake hold: ACC enabled at standstill - arming")
-      self.bh_recent_acc_enabled = True
+    """Jeep brake hold implementation matching jvePilot exactly
 
-    # Arm hold when ACC falls to disabled while still at standstill (SNG timeout) (matching jvePilot)
-    if (self.bh_recent_acc_enabled and
-        not CS.cruise_active_actual and
-        CS.out.standstill and
-        CS.forward_gear and
-        not CS.out.brakePressed):
-      if not self.bh_hold_active:
-        cloudlog.info(f"Brake hold: ACTIVATING - ACC disabled at standstill")
-      self.bh_hold_active = True
+    Activates when ACC is decelerating to a stop, then maintains brake pressure
+    after ACC times out due to SNG limitation.
+    """
+    # Track DAS_3 counter changes for proper message timing
+    counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
+    self.last_das_3_counter = CS.das_3.get('COUNTER')
 
-    # Debug logging for activation conditions (log every 50 frames to avoid spam)
-    if self.bh_recent_acc_enabled and not self.bh_hold_active and self.frame % 50 == 0:
-      cloudlog.info(f"Brake hold: Not activating - cruise_actual={CS.cruise_active_actual}, standstill={CS.out.standstill}, fwd_gear={CS.forward_gear}, brake={CS.out.brakePressed}")
+    # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
+    if (not CS.brake_hold and
+        CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+      CS.brake_hold = True
+      cloudlog.info("Brake hold: ACTIVATING - ACC decelerating to standstill")
 
-    # Disarm when ACC re-enables, vehicle moves, driver presses brake/gas, or gear not drive (matching jvePilot)
-    if (CS.out.cruiseState.enabled or
-        not CS.out.standstill or
-        CS.out.brakePressed or
-        CS.out.gasPressed or
-        not CS.forward_gear):
-      if self.bh_hold_active:
-        cloudlog.info(f"Brake hold: DEACTIVATING - cruise={CS.out.cruiseState.enabled}, standstill={CS.out.standstill}, brake={CS.out.brakePressed}, gas={CS.out.gasPressed}, gear={CS.forward_gear}")
-      self.bh_hold_active = False
-      if CS.out.cruiseState.enabled:
-        self.bh_recent_acc_enabled = False
+    # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
+    if (CS.brake_hold and
+        (not CC.enabled or not CS.out.cruiseState.enabled or
+         CS.acc_accelerating or not CS.out.standstill or
+         CC.cruiseControl.cancel or CS.out.gasPressed or
+         CS.out.brakePressed or not CS.forward_gear)):
+      CS.brake_hold = False
+      cloudlog.info("Brake hold: DEACTIVATING")
+      return
 
-    # While active, request brake decel with counter offsets like jvePilot; send ~50 Hz (matching jvePilot)
-    if self.bh_hold_active and (self.frame % 2 == 0) and CS.das_3:
+    # Send DAS_3 brake hold command when active (matching jvePilot)
+    if CS.brake_hold:
       das_bus = 0  # Jeep/Pacifica on bus 0
 
-      # Track incoming counter to compute offset (matching jvePilot)
-      counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
-      self.last_das_3_counter = CS.das_3.get('COUNTER')
-      counter_offset = 2 if counter_changed else 3
-
-      # Track decel like jvePilot
-      if CS.out.cruiseState.enabled:
-        self.brake_hold_decel = min(self.brake_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
+      # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
+      if CS.cruise_active_actual:
+        self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
       else:
-        self.brake_hold_decel = self.brake_hold_decel if CS.out.standstill else -2.0
+        # Send brake hold message with proper parameters (matching jvePilot)
+        counter_offset = 2 if counter_changed else 3
+        msg = chryslercan.das_3_command(self.packer, counter_offset,
+                                        False,  # go
+                                        False,  # torque_req
+                                        None,   # torque
+                                        2,      # max_gear
+                                        False,  # stop (standstill)
+                                        self.bh_hold_decel,  # brake
+                                        False,  # brake_prep
+                                        CS.das_3)
+        can_sends.append(msg)
 
-      # Send brake hold message with proper parameters (matching jvePilot exactly)
-      msg = chryslercan.das_3_command(self.packer, counter_offset,
-                                      False,  # go
-                                      False,  # torque_req
-                                      None,   # torque
-                                      2,      # max_gear
-                                      False,  # stop (standstill)
-                                      self.brake_hold_decel,  # brake
-                                      False,  # brake_prep
-                                      CS.das_3)
-      can_sends.append(msg)
-
-      # Log every 50 frames (~1 second) to avoid spam
-      if self.frame % 50 == 0:
-        cloudlog.info(f"Brake hold: Sending DAS_3 - decel={self.brake_hold_decel}, counter_offset={counter_offset}")
+        # Log every 50 frames (~1 second) to avoid spam
+        if self.frame % 50 == 0:
+          cloudlog.info(f"Brake hold: Sending DAS_3 - decel={self.bh_hold_decel}, counter_offset={counter_offset}")
