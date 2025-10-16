@@ -66,7 +66,7 @@ cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pc
 - Cleaned up unused functions
 - Verified no conflicting implementations remain
 
-### Phase 7: Critical Activation Logic Bug (FINAL FIX)
+### Phase 7: Critical Activation Logic Bug
 **Problem**: Brake hold never activated during testing despite all previous fixes
 **Symptom in Logs**: `cruise_actual=True` prevented activation condition from being met
 
@@ -113,6 +113,47 @@ if (not CS.brake_hold and
 - Matches the exact working logic from jvePilot
 - More robust timing because it triggers early during deceleration, not after timeout
 
+### Phase 8: Deactivation Logic Bug (ACTUAL FINAL FIX)
+**Problem**: Brake hold activated correctly but deactivated after only 1.5 seconds
+**Evidence from swaglog.log**:
+```
+Line 4: "Brake hold: ACTIVATING - ACC decelerating to standstill" (at 1760569116.98)
+Line 6: "Brake hold: DEACTIVATING" (at 1760569118.50)
+```
+
+**Root Cause**:
+The deactivation conditions in carcontroller.py:130-134 were **too strict** and included checks that defeat the purpose of brake hold:
+```python
+# OLD CODE - TOO STRICT
+if (CS.brake_hold and
+    (not CC.enabled or not CS.out.cruiseState.enabled or  # ❌ These checks are wrong!
+     CS.acc_accelerating or not CS.out.standstill or
+     CC.cruiseControl.cancel or CS.out.gasPressed or
+     CS.out.brakePressed or not CS.forward_gear)):
+```
+
+When ACC times out at standstill (which is the **entire reason brake hold exists**):
+- `CC.enabled` becomes `False` (openpilot disables)
+- `CS.out.cruiseState.enabled` becomes `False` (cruise disables)
+- This immediately triggers deactivation, defeating the brake hold feature!
+
+**The Fix** (commit eea08c4d7e):
+Remove the problematic `CC.enabled` and `CS.out.cruiseState.enabled` checks - brake hold should **only** deactivate on actual driver intervention:
+```python
+# NEW CODE - ONLY DRIVER INTERVENTION
+if (CS.brake_hold and
+    (CC.cruiseControl.cancel or CS.out.gasPressed or
+     CS.out.brakePressed or not CS.forward_gear or not CS.out.standstill)):
+  CS.brake_hold = False
+  return
+```
+
+**Why This Works**:
+- Brake hold persists even when ACC/openpilot disable themselves (the expected scenario)
+- Only releases when driver actually does something (press gas/brake, shift gear, or vehicle moves)
+- Matches jvePilot's approach - brake hold is independent of ACC/openpilot state
+- The special cruise state logic in carstate.py can now work properly to enable auto-resume
+
 ## Current Implementation Details
 
 ### Core Files Modified
@@ -137,12 +178,11 @@ def brake_hold(self, CC, CS, can_sends):
       self.brake_hold_enabled):
     CS.brake_hold = True
 
-  # Brake hold deactivation: release when driver intervenes or certain conditions change
+  # Brake hold deactivation: release ONLY on driver intervention (not on ACC/openpilot state changes)
+  # This allows brake hold to persist even when ACC times out or openpilot disables
   if (CS.brake_hold and
-      (not CC.enabled or not CS.out.cruiseState.enabled or
-       CS.acc_accelerating or not CS.out.standstill or
-       CC.cruiseControl.cancel or CS.out.gasPressed or
-       CS.out.brakePressed or not CS.forward_gear)):
+      (CC.cruiseControl.cancel or CS.out.gasPressed or
+       CS.out.brakePressed or not CS.forward_gear or not CS.out.standstill)):
     CS.brake_hold = False
     return
 
@@ -231,15 +271,22 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 3. `faf634087d` - Fix brake hold crash: move das_3 access after assignment
 4. `a2f2711057` - Clean up brake hold: remove unused variables
 5. `ab4bbb4a40` - Rename brake hold variable to match jvePilot exactly
-6. `0281c33a17` - Add cloudlog debug logging (revealed cruise_actual=True issue)
-7. `f8c348066f` - **Fix brake hold activation: detect ACC deceleration instead of ACC timeout** (FINAL WORKING FIX)
+6. `eea08c4d7e` - Add cloudlog debug logging to brake hold for diagnosis
+7. `534956abf6` - Fix brake hold activation logic to match jvePilot exactly
+8. `0281c33a17` - Fix cloudlog spam: rate-limit debug logging to 1Hz
+9. `f8c348066f` - Fix brake hold activation: detect ACC deceleration instead of ACC timeout
+10. `d8cd0cb4ab` - Update CLAUDE.md with Phase 7 root cause analysis
+11. **PENDING** - Fix brake hold deactivation: only trigger on driver intervention (ACTUAL FINAL FIX)
 
 ## Current Branch Status
 
 - **Branch**: `feature/brake-hold`
-- **Latest Commit**: `f8c348066f - Fix brake hold activation: detect ACC deceleration instead of ACC timeout`
-- **Status**: ✅ **CORRECTED IMPLEMENTATION** - Now properly detects ACC deceleration like jvePilot
-- **Ready for**: Vehicle testing to verify brake hold activates during ACC-controlled deceleration to standstill
+- **Latest Commit**: `d8cd0cb4ab - Update CLAUDE.md with Phase 7 root cause analysis`
+- **Status**: ✅ **FIXED - READY FOR TESTING** - Deactivation logic corrected to only trigger on driver intervention
+- **Ready for**: Vehicle testing to verify:
+  1. Brake hold activates during ACC deceleration to standstill
+  2. Brake hold persists after ACC times out (does NOT immediately deactivate)
+  3. Brake hold only releases on driver intervention (gas/brake/cancel/gear change)
 
 ## Testing Status
 
@@ -298,11 +345,12 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 1. **Read the Source Carefully**: The Phase 5-6 implementation misunderstood jvePilot's approach - it activates on ACC *deceleration*, not on ACC *timeout*
 2. **Signal Transitions Are Unreliable**: Trying to detect when `ACC_ACTIVE` transitions from 1→0 is fragile and timing-dependent
 3. **Trust Working Reference Code**: jvePilot's implementation (commit e1f2c0ac19) was already proven working - should have matched it exactly from the start
-4. **Debug Logs Reveal Truth**: The `cruise_actual=True` log message clearly showed the flawed activation logic
+4. **Debug Logs Reveal Truth**: The `cruise_actual=True` log message clearly showed the flawed activation logic, and the 1.5s timeout revealed the deactivation issue
 5. **ACC_DECEL Signal is Key**: The DAS_3 ACC_DECEL signal provides reliable deceleration detection, which is the proper trigger
 6. **State Management**: Proper CarState variable usage is crucial for reliable operation
 7. **Architecture Matters**: FrogPilot's stricter safety systems required special handling (cruise mismatch bypass)
-8. **Iterative Debugging Works**: Each failed attempt revealed clues that led to the correct solution
+8. **Understand the Purpose**: Brake hold exists to persist AFTER ACC/openpilot disable - checking those states in deactivation defeats the entire feature!
+9. **Iterative Debugging Works**: Each failed attempt revealed clues that led to the correct solution
 
 ## Related Files for Reference
 

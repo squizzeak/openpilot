@@ -126,12 +126,11 @@ class CarController(CarControllerBase):
       CS.brake_hold = True
       cloudlog.info("Brake hold: ACTIVATING - ACC decelerating to standstill")
 
-    # Brake hold deactivation: release when driver intervenes or certain conditions change (matching jvePilot)
+    # Brake hold deactivation: release ONLY on driver intervention (not on ACC/openpilot state changes)
+    # This allows brake hold to persist even when ACC times out or openpilot disables
     if (CS.brake_hold and
-        (not CC.enabled or not CS.out.cruiseState.enabled or
-         CS.acc_accelerating or not CS.out.standstill or
-         CC.cruiseControl.cancel or CS.out.gasPressed or
-         CS.out.brakePressed or not CS.forward_gear)):
+        (CC.cruiseControl.cancel or CS.out.gasPressed or
+         CS.out.brakePressed or not CS.forward_gear or not CS.out.standstill)):
       CS.brake_hold = False
       cloudlog.info("Brake hold: DEACTIVATING")
       return
