@@ -154,6 +154,29 @@ if (CS.brake_hold and
 - Matches jvePilot's approach - brake hold is independent of ACC/openpilot state
 - The special cruise state logic in carstate.py can now work properly to enable auto-resume
 
+### Phase 9: ACC Auto-Resume Implementation
+**Problem**: Brake hold successfully maintains vehicle at standstill, but ACC doesn't automatically resume when lead vehicle departs
+**Solution**: Periodic Resume button press to trigger ACC auto-resume functionality
+
+**Implementation Details**:
+While brake hold is active and sending DAS_3 messages (when `cruise_active_actual` is False), we send ACC Resume button presses every 25 frames (0.5 seconds) to continuously attempt ACC re-engagement.
+
+**Code in carcontroller.py:159-163**:
+```python
+# Send Resume button press every 25 frames (0.5 seconds) to attempt ACC resume
+if self.frame % 25 == 0:
+  resume_msg = chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus,
+                                                 CS.button_message, resume=True)
+  can_sends.append(resume_msg)
+```
+
+**Why This Works**:
+- Resume button presses are only sent when brake hold is maintaining vehicle (not while ACC is active)
+- 0.5 second interval provides regular resume attempts without overwhelming CAN bus
+- Uses existing `create_cruise_buttons()` function with proper counter management
+- When lead vehicle departs and begins moving, ACC will detect the motion and resume automatically
+- If lead vehicle is present but motionless, Resume presses have no effect (safe)
+
 ## Current Implementation Details
 
 ### Core Files Modified
@@ -204,6 +227,12 @@ def brake_hold(self, CC, CS, can_sends):
                                       False,  # brake_prep
                                       CS.das_3)
       can_sends.append(msg)
+
+      # Send Resume button press every 25 frames (0.5 seconds) to attempt ACC resume
+      if self.frame % 25 == 0:
+        resume_msg = chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus,
+                                                       CS.button_message, resume=True)
+        can_sends.append(resume_msg)
 ```
 
 #### 2. selfdrive/car/chrysler/chryslercan.py
