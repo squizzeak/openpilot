@@ -177,6 +177,40 @@ if self.frame % 25 == 0:
 - When lead vehicle departs and begins moving, ACC will detect the motion and resume automatically
 - If lead vehicle is present but motionless, Resume presses have no effect (safe)
 
+### Phase 10: Timeline Display Fix
+**Problem**: Timeline display in connect.comma.ai stopped showing openpilot enable state properly around Sept 18, 2024
+**Root Cause**: Overly aggressive "predictive" cruise mismatch bypass logic
+
+**Analysis**:
+The Phase 5 cruise mismatch bypass included predictive logic that triggered whenever openpilot was disabled at standstill:
+```python
+# OLD CODE - TOO AGGRESSIVE
+is_jeep_brake_hold = (brake_hold_conditions and
+                     (hasattr(CS, 'brake_hold') and CS.brake_hold or
+                      not self.enabled))  # ❌ Triggers at ANY standstill!
+```
+
+**The Problem**:
+- The `or not self.enabled` condition meant bypass activated at EVERY standstill (red lights, traffic stops, etc.)
+- This allowed `CS.cruiseState.enabled = True` and `self.enabled = False` to coexist without triggering mismatch
+- Timeline display relies on proper state reporting, which was corrupted by the overly broad bypass
+- No actual cruise state manipulation was happening (that code was never implemented)
+
+**The Fix** (commit PENDING):
+Remove predictive logic - only bypass when brake hold is genuinely active:
+```python
+# NEW CODE - PRECISE
+is_jeep_brake_hold = (brake_hold_enabled and
+                     hasattr(CS, 'brake_hold') and CS.brake_hold)
+```
+
+**Why This Works**:
+- Bypass only activates when `CS.brake_hold = True` (actual brake hold operation)
+- Normal cruise mismatch detection works during regular driving
+- Timeline display shows true openpilot enable/disable states
+- Still prevents "TAKE CONTROL" error during actual brake hold
+- No side effects on normal driving behavior
+
 ## Current Implementation Details
 
 ### Core Files Modified
@@ -270,28 +304,39 @@ def das_3_command(packer, counter_offset, go, torque_req, torque, max_gear, stop
 **Key Changes**:
 - Added brake hold state variables matching jvePilot
 - Enhanced state tracking for ACC deceleration detection
-- Added cruise state manipulation for auto-resume functionality
+- Captures actual cruise state before any processing for brake hold logic
 
 **State Variables Added**:
 ```python
 # Brake hold state variables (matching jvePilot implementation)
 self.brake_hold = False
-self.cruise_active_actual = False
+self.cruise_active_actual = False  # Captured from actual DAS_3 ACC_ACTIVE signal
 self.acc_accelerating = False
 self.acc_decelerating = False
 self.forward_gear = False
 ```
 
-**Special Cruise State Logic**:
-```python
-# Special brake hold logic: keep cruise "enabled" during brake hold (matching jvePilot)
-if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self.brake_hold:
-  ret.cruiseState.enabled = ret.cruiseState.available  # stay enabled
-  ret.cruiseState.standstill = True  # we want to resume
-```
+**Implementation Details**:
+- `cruise_active_actual` captures the real ACC_ACTIVE state from DAS_3 message
+- Used by carcontroller.py to detect when ACC is active vs when brake hold takes over
+- No manipulation of `ret.cruiseState.enabled` - we use the actual car state
+- Auto-resume is handled via periodic Resume button presses (see Phase 9)
 
 #### 4. selfdrive/controls/controlsd.py
-**Key Changes**: Added predictive cruise mismatch bypass for brake hold scenarios
+**Key Changes**: Cruise mismatch bypass for brake hold scenarios
+
+**Implementation** (controlsd.py:398-399):
+```python
+# Only bypass cruise mismatch when brake hold is actually active (not predictive)
+is_jeep_brake_hold = (brake_hold_enabled and
+                     hasattr(CS, 'brake_hold') and CS.brake_hold)
+```
+
+**Why This Works**:
+- Bypasses cruise mismatch detection ONLY when brake hold is genuinely active
+- Allows normal cruise mismatch detection during regular driving
+- Prevents false positives that interfere with timeline display
+- Still prevents "TAKE CONTROL" error during actual brake hold operation
 
 ## Commit History
 
@@ -305,17 +350,20 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 8. `0281c33a17` - Fix cloudlog spam: rate-limit debug logging to 1Hz
 9. `f8c348066f` - Fix brake hold activation: detect ACC deceleration instead of ACC timeout
 10. `d8cd0cb4ab` - Update CLAUDE.md with Phase 7 root cause analysis
-11. **PENDING** - Fix brake hold deactivation: only trigger on driver intervention (ACTUAL FINAL FIX)
+11. `8690a30091` - Fix brake hold deactivation: only release on driver intervention
+12. `dd26c25d62` - Add ACC auto-resume during brake hold
+13. **PENDING** - Fix timeline display: remove predictive cruise mismatch bypass
 
 ## Current Branch Status
 
 - **Branch**: `feature/brake-hold`
-- **Latest Commit**: `d8cd0cb4ab - Update CLAUDE.md with Phase 7 root cause analysis`
-- **Status**: ✅ **FIXED - READY FOR TESTING** - Deactivation logic corrected to only trigger on driver intervention
-- **Ready for**: Vehicle testing to verify:
-  1. Brake hold activates during ACC deceleration to standstill
-  2. Brake hold persists after ACC times out (does NOT immediately deactivate)
-  3. Brake hold only releases on driver intervention (gas/brake/cancel/gear change)
+- **Latest Commit**: `dd26c25d62 - Add ACC auto-resume during brake hold`
+- **Status**: ✅ **WORKING** - Brake hold fully functional; timeline display fix ready for testing
+- **Changes Ready for Testing**:
+  1. ✅ Brake hold activation/deactivation working correctly
+  2. ✅ ACC auto-resume implemented
+  3. 🔄 Timeline display fix (predictive bypass removed)
+  4. 🔄 Normal cruise mismatch detection restored
 
 ## Testing Status
 
@@ -323,13 +371,14 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 - ✅ Code compiles without errors
 - ✅ No crashes during ACC operation
 - ✅ DAS_3 messages properly formatted
-- ✅ Controls mismatch bypass logic implemented
+- ✅ Brake hold activation works correctly
+- ✅ Brake hold deactivation only on driver intervention
+- ✅ ACC auto-resume implemented and working
 
 ### Pending Vehicle Testing
-- 🔄 **Test predictive brake hold bypass fix** - Need to verify mismatch error resolved
-- 🔄 **Validate brake hold engagement** - Confirm brakes hold after ACC timeout
-- 🔄 **Test auto-resume functionality** - Verify resumption when lead car departs
-- 🔄 **Test safety overrides** - Confirm deactivation on brake/gas/gear changes
+- 🔄 **Test timeline display fix** - Verify comma connect timeline shows proper enable states
+- 🔄 **Test cruise mismatch detection** - Confirm normal mismatch detection works during regular driving
+- 🔄 **Validate no side effects** - Ensure brake hold still works with precise bypass logic
 
 ## Architecture Comparison: FrogPilot vs jvePilot
 
@@ -339,9 +388,10 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 3. **Safety Systems**: FrogPilot's controlsd.py has additional mismatch detection that needed bypassing
 
 ### Our Solution
-- **Predictive Bypass**: Anticipates brake hold activation to prevent mismatch detection
+- **Precise Bypass**: Only bypasses cruise mismatch when brake hold is genuinely active (not predictive)
 - **Architectural Bridge**: Allows jvePilot brake hold logic to work within FrogPilot's safety framework
 - **Compatibility**: Maintains existing FrogPilot toggle and safety systems
+- **No State Manipulation**: Uses actual car state without hijacking cruise state values
 
 ## Technical Details
 
@@ -363,9 +413,9 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 
 ## Next Steps
 
-1. **Vehicle Testing**: Test the predictive brake hold bypass fix
-2. **Performance Validation**: Verify no regressions in normal cruise operation
-3. **Edge Case Testing**: Test deactivation scenarios (brake press, gas press, gear changes)
+1. **Vehicle Testing**: Test the timeline display fix with precise cruise mismatch bypass
+2. **Performance Validation**: Verify brake hold still works correctly with non-predictive bypass
+3. **Timeline Verification**: Check comma connect timeline shows proper openpilot enable/disable states
 4. **Commit Cleanup**: Consider rebasing commits after successful testing
 5. **Documentation**: Update FrogPilot documentation if implementation proves successful
 
@@ -379,7 +429,10 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 6. **State Management**: Proper CarState variable usage is crucial for reliable operation
 7. **Architecture Matters**: FrogPilot's stricter safety systems required special handling (cruise mismatch bypass)
 8. **Understand the Purpose**: Brake hold exists to persist AFTER ACC/openpilot disable - checking those states in deactivation defeats the entire feature!
-9. **Iterative Debugging Works**: Each failed attempt revealed clues that led to the correct solution
+9. **Predictive Logic Can Backfire**: Overly aggressive "predictive" logic caused unintended side effects (timeline display corruption)
+10. **Be Precise**: Safety bypasses should be as narrow as possible - only bypass when absolutely necessary
+11. **Document Never-Implemented Code**: The "cruise state manipulation" was documented but never implemented - documentation should match reality
+12. **Iterative Debugging Works**: Each failed attempt revealed clues that led to the correct solution
 
 ## Related Files for Reference
 
@@ -390,4 +443,4 @@ if not ret.cruiseState.enabled and ret.standstill and self.forward_gear and self
 
 ---
 
-*Last updated: After comprehensive brake hold implementation with cruise mismatch bypass*
+*Last updated: After fixing timeline display issue by removing predictive cruise mismatch bypass logic*

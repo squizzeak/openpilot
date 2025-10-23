@@ -393,15 +393,10 @@ class Controls:
       is_jeep = self.CP.carFingerprint in CHRYSLER_JEEPS
       brake_hold_enabled = is_jeep and getattr(self.frogpilot_toggles, 'jeep_brake_hold', False)
 
-      # Check if brake hold is active OR should be active (predictive check)
-      brake_hold_conditions = (brake_hold_enabled and CS.standstill and
-                              CS.gearShifter == car.CarState.GearShifter.drive and
-                              not CS.brakePressed)
-
-      # Active brake hold or conditions met for brake hold
-      is_jeep_brake_hold = (brake_hold_conditions and
-                           (hasattr(CS, 'brake_hold') and CS.brake_hold or
-                            not self.enabled))  # Predictive: if openpilot disabled at standstill
+      # Only bypass cruise mismatch when brake hold is actually active (not predictive)
+      # This allows proper timeline display and normal cruise mismatch detection during regular driving
+      is_jeep_brake_hold = (brake_hold_enabled and
+                           hasattr(CS, 'brake_hold') and CS.brake_hold)
 
       cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pcmCruise) and not is_jeep_brake_hold
       self.cruise_mismatch_counter = self.cruise_mismatch_counter + 1 if cruise_mismatch else 0
