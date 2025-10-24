@@ -156,8 +156,8 @@ class CarController(CarControllerBase):
                                         CS.das_3)
         can_sends.append(msg)
 
-        # Send Resume button press every 25 frames (0.5 seconds) to attempt ACC resume
-        if self.frame % 25 == 0:
+        # Send Resume button press every 10 frames (~0.2 seconds) to attempt ACC resume
+        if self.frame % 10 == 0:
           resume_msg = chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus,
                                                          CS.button_message, resume=True)
           can_sends.append(resume_msg)
