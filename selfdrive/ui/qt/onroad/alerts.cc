@@ -5,27 +5,35 @@
 
 #include "selfdrive/ui/qt/util.h"
 
-void OnroadAlerts::updateState(const UIState &s) {
+void OnroadAlerts::updateState(const UIState &s, const FrogPilotUIState &fs) {
   Alert a = getAlert(*(s.sm), s.scene.started_frame);
   if (!alert.equal(a)) {
     alert = a;
     update();
   }
+
+  // FrogPilot variables
 }
 
 void OnroadAlerts::clear() {
   alert = {};
   update();
+
+  // FrogPilot variables
 }
 
 OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, uint64_t started_frame) {
   const cereal::SelfdriveState::Reader &ss = sm["selfdriveState"].getSelfdriveState();
   const uint64_t selfdrive_frame = sm.rcv_frame("selfdriveState");
 
+  // FrogPilot variables
+
   Alert a = {};
   if (selfdrive_frame >= started_frame) {  // Don't get old alert.
     a = {ss.getAlertText1().cStr(), ss.getAlertText2().cStr(),
          ss.getAlertType().cStr(), ss.getAlertSize(), ss.getAlertStatus()};
+
+    // FrogPilot variables
   }
 
   if (!sm.updated("selfdriveState") && (sm.frame - started_frame) > 5 * UI_FREQ) {
