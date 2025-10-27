@@ -983,12 +983,7 @@ class FrogPilotVariables:
 
     toggle.volt_sng = toggle.car_model == "CHEVROLET_VOLT" and (params.get_bool("VoltSNG") if tuning_level >= level["VoltSNG"] else default.get_bool("VoltSNG"))
 
-    # Jeep-only Brake Hold toggle exposure to the runtime
-    try:
-      is_jeep = CP.carName == "chrysler" and CP.carFingerprint in CHRYSLER_JEEPS
-    except Exception:
-      is_jeep = False
-    toggle.jeep_brake_hold = is_jeep and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
+    toggle.jeep_brake_hold = toggle.car_model in CHRYSLER_JEEPS and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
 
     params_memory.put("FrogPilotToggles", json.dumps(toggle.__dict__))
     params_memory.remove("FrogPilotTogglesUpdated")

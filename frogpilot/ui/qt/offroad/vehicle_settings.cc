@@ -237,11 +237,7 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
     } else {
       settingsList->addItem(vehicleToggle);
 
-      // Only mark true parent navigation buttons as parent keys, so they
-      // start hidden and are revealed when a child toggle becomes visible.
-      if (param == "GMToggles" || param == "HKGToggles" || param == "ToyotaToggles") {
-        parentKeys.insert(param);
-      }
+      parentKeys.insert(param);
     }
 
     if (ButtonControl *buttonControl = qobject_cast<ButtonControl*>(vehicleToggle)) {
