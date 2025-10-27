@@ -256,6 +256,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("IncreaseThermalLimits", "0", 2, "0"),
   ("IsLdwEnabled", "0", 0, "0"),
   ("IsMetric", "0", 0, "0"),
+  ("JeepBrakeHold", "0", 2, "0"),
   ("KonikDongleId", "", 0, ""),
   ("KonikMinutes", "0", 0, "0"),
   ("LaneChangeCustomizations", "1", 0, "1"),
@@ -442,7 +443,6 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("VeryLongDistanceButtonControl", "6", 2, "0"),
   ("VisionTurnControl", "1", 1, "0"),
   ("VoltSNG", "0", 2, "0"),
-  ("JeepBrakeHold", "0", 2, "0"),
   ("WarningImmediateVolume", "101", 2, "101"),
   ("WarningSoftVolume", "101", 2, "101"),
   ("WheelIcon", "frog", 0, "stock"),
@@ -983,12 +983,7 @@ class FrogPilotVariables:
 
     toggle.volt_sng = toggle.car_model == "CHEVROLET_VOLT" and (params.get_bool("VoltSNG") if tuning_level >= level["VoltSNG"] else default.get_bool("VoltSNG"))
 
-    # Jeep-only Brake Hold toggle exposure to the runtime
-    try:
-      is_jeep = CP.carName == "chrysler" and CP.carFingerprint in CHRYSLER_JEEPS
-    except Exception:
-      is_jeep = False
-    toggle.jeep_brake_hold = is_jeep and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
+    toggle.jeep_brake_hold = toggle.car_model in CHRYSLER_JEEPS and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
 
     params_memory.put("FrogPilotToggles", json.dumps(toggle.__dict__))
     params_memory.remove("FrogPilotTogglesUpdated")

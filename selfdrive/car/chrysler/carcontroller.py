@@ -90,16 +90,7 @@ class CarController(CarControllerBase):
 
       can_sends.append(chryslercan.create_lkas_command(self.packer, self.CP, int(apply_steer), lkas_control_bit))
 
-    # Jeep Brake Hold: keep standstill asserted (and optional small brake) after SNG auto-cancel
-    # This mirrors the jvePilot implementation for proper brake hold functionality
-    try:
-      is_jeep = (self.CP.carFingerprint in CHRYSLER_JEEPS)
-    except Exception:
-      is_jeep = False
-
-    # Jeep Brake Hold: keep standstill asserted (and optional small brake) after SNG auto-cancel
-    # This mirrors the jvePilot implementation exactly
-    if is_jeep and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
+    if self.CP.carFingerprint in CHRYSLER_JEEPS and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
       self.brake_hold(CC, CS, can_sends)
 
     self.frame += 1
