@@ -13,6 +13,7 @@ public:
   void clear();
 
   // FrogPilot variables
+  int alertHeight;
 
 protected:
   struct Alert {
