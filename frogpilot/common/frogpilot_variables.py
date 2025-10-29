@@ -182,6 +182,7 @@ class FrogPilotVariables:
     steerKp = CP.lateralTuning.torque.kp
     steerRatio = CP.steerRatio
     toggle.stoppingDecelRate = CP.stoppingDecelRate
+    use_lkas_for_aol = not toggle.openpilot_longitudinal and CP.safetyConfigs[0].safetyModel == SafetyModel.hyundaiCanfd
     toggle.vEgoStarting = CP.vEgoStarting
     toggle.vEgoStopping = CP.vEgoStopping
 
@@ -232,10 +233,9 @@ class FrogPilotVariables:
     toggle.warningImmediate_volume = max(self.params.get("WarningImmediateVolume") if toggle.alert_volume_controller and tuning_level >= level["WarningImmediateVolume"] else default["WarningImmediateVolume"], 25)
 
     toggle.always_on_lateral = self.params.get_bool("AlwaysOnLateral") if tuning_level >= level["AlwaysOnLateral"] else default["AlwaysOnLateral"]
-    toggle.always_on_lateral_set &= toggle.always_on_lateral
-    toggle.always_on_lateral_lkas = toggle.always_on_lateral_set and toggle.use_lkas_for_aol and (self.params.get_bool("AlwaysOnLateralLKAS") if tuning_level >= level["AlwaysOnLateralLKAS"] else default["AlwaysOnLateralLKAS"])
-    toggle.always_on_lateral_main = toggle.always_on_lateral_set and not toggle.use_lkas_for_aol and (self.params.get_bool("AlwaysOnLateralMain") if tuning_level >= level["AlwaysOnLateralMain"] else default["AlwaysOnLateralMain"])
-    toggle.always_on_lateral_pause_speed = self.params.get("PauseAOLOnBrake") if toggle.always_on_lateral_set and tuning_level >= level["PauseAOLOnBrake"] else default["PauseAOLOnBrake"]
+    toggle.always_on_lateral_lkas = toggle.always_on_lateral and use_lkas_for_aol and (self.params.get_bool("AlwaysOnLateralLKAS") if tuning_level >= level["AlwaysOnLateralLKAS"] else default["AlwaysOnLateralLKAS"])
+    toggle.always_on_lateral_main = toggle.always_on_lateral and not use_lkas_for_aol and (self.params.get_bool("AlwaysOnLateralMain") if tuning_level >= level["AlwaysOnLateralMain"] else default["AlwaysOnLateralMain"])
+    toggle.always_on_lateral_pause_speed = self.params.get("PauseAOLOnBrake") if toggle.always_on_lateral and tuning_level >= level["PauseAOLOnBrake"] else default["PauseAOLOnBrake"]
 
     toggle.automatic_updates = (self.params.get_bool("AutomaticUpdates") if tuning_level >= level["AutomaticUpdates"] and (self.release_branch or self.vetting_branch) else default["AutomaticUpdates"]) and not BACKUP_PATH.is_file()
 
