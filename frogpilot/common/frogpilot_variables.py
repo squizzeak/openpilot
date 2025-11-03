@@ -223,6 +223,7 @@ class FrogPilotVariables:
 
     toggle.car_make = CP.brand
     toggle.car_model = CP.carFingerprint
+    toggle.disable_openpilot_long = self.params.get_bool("DisableOpenpilotLongitudinal") if tuning_level >= level["DisableOpenpilotLongitudinal"] else default["DisableOpenpilotLongitudinal"]
     friction = CP.lateralTuning.torque.friction
     has_bsm = CP.enableBsm
     toggle.has_cc_long = toggle.car_make == "gm" and bool(CP.flags & GMFlags.CC_LONG.value)
