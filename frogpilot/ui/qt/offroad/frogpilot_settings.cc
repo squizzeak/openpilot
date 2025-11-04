@@ -313,6 +313,7 @@ void FrogPilotSettingsWindow::updateVariables() {
     isHKGCanFd = isHKG && safetyModel == cereal::CarParams::SafetyModel::HYUNDAI_CANFD;
     isHonda = carMake == "honda";
     isHondaNidec = isHonda && safetyModel == cereal::CarParams::SafetyModel::HONDA_NIDEC;
+    isJeep = carMake == "chrysler" && (carFingerprint.rfind("JEEP_", 0) == 0);
     isSubaru = carMake == "subaru";
     isTorqueCar = CP.getLateralTuning().which() == cereal::CarParams::LateralTuning::TORQUE;
     isToyota = carMake == "toyota";
@@ -417,6 +418,13 @@ void FrogPilotSettingsWindow::updateVariables() {
       }
       params.putFloat("VEgoStoppingStock", vEgoStopping);
     }
+  }
+
+  // Fallback when car is off: infer Jeep from user-selected make so Jeep-only
+  // toggles (e.g., JeepBrakeHold) can appear without live CarParams.
+  if (carParams.empty()) {
+    QString selectedMake = QString::fromStdString(params.get("CarMake", true)).toLower();
+    isJeep = (selectedMake == "jeep");
   }
 
   std::string frogpilotCarParams = params.get("FrogPilotCarParamsPersistent");

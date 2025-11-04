@@ -16,6 +16,7 @@ from openpilot.common.params import Params
 from openpilot.selfdrive.car import gen_empty_fingerprint
 from openpilot.selfdrive.car.car_helpers import interfaces
 from openpilot.selfdrive.car.gm.values import GMFlags
+from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 from openpilot.selfdrive.car.interfaces import TORQUE_SUBSTITUTE_PATH, CarInterfaceBase
 from openpilot.selfdrive.car.mock.interface import CarInterface
 from openpilot.selfdrive.car.mock.values import CAR as MOCK
@@ -297,6 +298,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("IncreaseThermalLimits", "0", 2, "0"),
   ("IsLdwEnabled", "0", 0, "0"),
   ("IsMetric", "0", 0, "0"),
+  ("JeepBrakeHold", "0", 2, "0"),
   ("KonikDongleId", "", 0, ""),
   ("KonikMinutes", "0", 0, "0"),
   ("LaneChanges", "1", 0, "1"),
@@ -1048,6 +1050,8 @@ class FrogPilotVariables:
     toggle.unlock_doors = toyota_doors and (params.get_bool("UnlockDoors") if tuning_level >= level["UnlockDoors"] else default.get_bool("UnlockDoors"))
 
     toggle.volt_sng = toggle.car_model == "CHEVROLET_VOLT" and (params.get_bool("VoltSNG") if tuning_level >= level["VoltSNG"] else default.get_bool("VoltSNG"))
+
+    toggle.jeep_brake_hold = toggle.car_model in CHRYSLER_JEEPS and (params.get_bool("JeepBrakeHold") if tuning_level >= level["JeepBrakeHold"] else default.get_bool("JeepBrakeHold"))
 
     params_memory.put("FrogPilotToggles", json.dumps(toggle.__dict__))
     params_memory.remove("FrogPilotTogglesUpdated")

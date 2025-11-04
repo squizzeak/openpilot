@@ -594,6 +594,7 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"VEgoStoppingStock", PERSISTENT},
     {"VeryLongDistanceButtonControl", PERSISTENT},
     {"VoltSNG", PERSISTENT},
+    {"JeepBrakeHold", PERSISTENT},
     {"WarningImmediateVolume", PERSISTENT},
     {"WarningSoftVolume", PERSISTENT},
     {"WeatherPresets", PERSISTENT},

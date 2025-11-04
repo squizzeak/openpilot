@@ -1,9 +1,12 @@
+from cereal import car
 from opendbc.can.packer import CANPacker
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.car import apply_meas_steer_torque_limits
 from openpilot.selfdrive.car.chrysler import chryslercan
-from openpilot.selfdrive.car.chrysler.values import RAM_CARS, RAM_DT, CarControllerParams, ChryslerFlags
+from openpilot.selfdrive.car.chrysler.values import RAM_CARS, RAM_DT, CarControllerParams, ChryslerFlags, CAR
+from openpilot.selfdrive.car.chrysler.values import JEEPS as CHRYSLER_JEEPS
 from openpilot.selfdrive.car.interfaces import CarControllerBase
+from openpilot.common.swaglog import cloudlog
 
 
 class CarController(CarControllerBase):
@@ -20,6 +23,10 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_name)
     self.params = CarControllerParams(CP)
 
+    # Brake hold (Jeep SNG workaround) - matching jvePilot implementation
+    self.bh_hold_decel = -2.0  # Default brake decel value like jvePilot
+    self.last_das_3_counter = -1
+
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     can_sends = []
 
@@ -29,15 +36,15 @@ class CarController(CarControllerBase):
     if (self.frame - self.last_button_frame)*DT_CTRL > 0.05:
       das_bus = 2 if self.CP.carFingerprint in RAM_CARS else 0
 
-      # ACC cancellation
-      if CC.cruiseControl.cancel:
-        self.last_button_frame = self.frame
-        can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, cancel=True))
+      # ACC cancellation (disabled for brake hold compatibility - matches jvePilot)
+      # if CC.cruiseControl.cancel:
+      #   self.last_button_frame = self.frame
+      #   can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, cancel=True))
 
-      # ACC resume from standstill
-      elif CC.cruiseControl.resume:
-        self.last_button_frame = self.frame
-        can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, resume=True))
+      # ACC resume from standstill (disabled for brake hold compatibility - matches jvePilot)
+      # elif CC.cruiseControl.resume:
+      #   self.last_button_frame = self.frame
+      #   can_sends.append(chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus, CS.button_message, resume=True))
 
     # HUD alerts
     if self.frame % 25 == 0:
@@ -83,6 +90,9 @@ class CarController(CarControllerBase):
 
       can_sends.append(chryslercan.create_lkas_command(self.packer, self.CP, int(apply_steer), lkas_control_bit))
 
+    if self.CP.carFingerprint in CHRYSLER_JEEPS and getattr(frogpilot_toggles, 'jeep_brake_hold', False):
+      self.brake_hold(CC, CS, can_sends)
+
     self.frame += 1
 
     new_actuators = CC.actuators.as_builder()
@@ -90,3 +100,59 @@ class CarController(CarControllerBase):
     new_actuators.steerOutputCan = self.apply_steer_last
 
     return new_actuators, can_sends
+
+  def brake_hold(self, CC, CS, can_sends):
+    """Jeep brake hold implementation matching jvePilot exactly
+
+    Activates when ACC is decelerating to a stop, then maintains brake pressure
+    after ACC times out due to SNG limitation.
+    """
+    # Track DAS_3 counter changes for proper message timing
+    counter_changed = (CS.das_3.get('COUNTER') != self.last_das_3_counter)
+    self.last_das_3_counter = CS.das_3.get('COUNTER')
+
+    # Brake hold activation: engage when ACC is decelerating to a stop (matching jvePilot)
+    if (not CS.brake_hold and
+        CS.cruise_active_actual and CS.acc_decelerating and CS.out.standstill):
+      CS.brake_hold = True
+      cloudlog.info("Brake hold: ACTIVATING - ACC decelerating to standstill")
+
+    # Brake hold deactivation: release ONLY on driver intervention (not on ACC/openpilot state changes)
+    # This allows brake hold to persist even when ACC times out or openpilot disables
+    if (CS.brake_hold and
+        (CC.cruiseControl.cancel or CS.out.gasPressed or
+         CS.out.brakePressed or not CS.forward_gear or not CS.out.standstill)):
+      CS.brake_hold = False
+      cloudlog.info("Brake hold: DEACTIVATING")
+      return
+
+    # Send DAS_3 brake hold command when active (matching jvePilot)
+    if CS.brake_hold:
+      das_bus = 0  # Jeep/Pacifica on bus 0
+
+      # Track decel like jvePilot (uses actual ACC_DECEL value, not calculated)
+      if CS.cruise_active_actual:
+        self.bh_hold_decel = min(self.bh_hold_decel, CS.das_3.get('ACC_DECEL', -2.0)) if CS.out.standstill else -2.0
+      else:
+        # Send brake hold message with proper parameters (matching jvePilot)
+        counter_offset = 2 if counter_changed else 3
+        msg = chryslercan.das_3_command(self.packer, counter_offset,
+                                        False,  # go
+                                        False,  # torque_req
+                                        None,   # torque
+                                        2,      # max_gear
+                                        False,  # stop (standstill)
+                                        self.bh_hold_decel,  # brake
+                                        False,  # brake_prep
+                                        CS.das_3)
+        can_sends.append(msg)
+
+        # Send Resume button press every 10 frames (~0.2 seconds) to attempt ACC resume
+        if self.frame % 10 == 0:
+          resume_msg = chryslercan.create_cruise_buttons(self.packer, CS.button_counter + 1, das_bus,
+                                                         CS.button_message, resume=True)
+          can_sends.append(resume_msg)
+
+        # Log every 50 frames (~1 second) to avoid spam
+        if self.frame % 50 == 0:
+          cloudlog.info(f"Brake hold: Sending DAS_3 - decel={self.bh_hold_decel}, counter_offset={counter_offset}")
