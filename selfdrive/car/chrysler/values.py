@@ -117,6 +117,8 @@ RAM_DT = {CAR.RAM_1500_5TH_GEN, }
 RAM_HD = {CAR.RAM_HD_5TH_GEN, }
 RAM_CARS = RAM_DT | RAM_HD
 
+# Subset grouping for Jeep platforms. Useful for gating Jeep-specific features.
+JEEPS = {CAR.JEEP_GRAND_CHEROKEE, CAR.JEEP_GRAND_CHEROKEE_2019}
 
 CHRYSLER_VERSION_REQUEST = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
   p16(0xf132)

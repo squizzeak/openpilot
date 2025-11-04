@@ -105,22 +105,28 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
   };
 
   ButtonControl *selectMakeButton = new ButtonControl(tr("Car Make"), tr("SELECT"));
-  QObject::connect(selectMakeButton, &ButtonControl::clicked, [makes, selectMakeButton, this]() {
+  QObject::connect(selectMakeButton, &ButtonControl::clicked, [makes, selectMakeButton, parent, this]() {
     QString makeSelection = MultiOptionDialog::getSelection(tr("Choose your car make"), makes, "", this);
     if (!makeSelection.isEmpty()) {
       params.put("CarMake", makeSelection.toStdString());
       selectMakeButton->setValue(makeSelection);
+      // Refresh parent-derived visibility flags (e.g., isJeep fallback when car is off)
+      parent->updateVariables();
+      updateToggles();
     }
   });
   settingsList->addItem(selectMakeButton);
 
   ButtonControl *selectModelButton = new ButtonControl(tr("Car Model"), tr("SELECT"));
-  QObject::connect(selectModelButton, &ButtonControl::clicked, [selectModelButton, this]() {
+  QObject::connect(selectModelButton, &ButtonControl::clicked, [selectModelButton, parent, this]() {
     QString modelSelection = MultiOptionDialog::getSelection(tr("Choose your car model"), getCarNames(QString::fromStdString(params.get("CarMake")).toLower(), carModels), "", this);
     if (!modelSelection.isEmpty()) {
       params.put("CarModel", carModels.value(modelSelection).toStdString());
       params.put("CarModelName", modelSelection.toStdString());
       selectModelButton->setValue(modelSelection);
+      // Refresh visibility in case model-specific toggles depend on selection
+      parent->updateVariables();
+      updateToggles();
     }
   });
   settingsList->addItem(selectModelButton);
@@ -174,6 +180,7 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
     {"ExperimentalGMTune", tr("FrogsGoMoo's Experimental Tune"), tr("<b>Experimental GM tune by FrogsGoMoo</b> that attempts to smoothen stopping and takeoff control. Use at your own risk!"), ""},
     {"LongPitch", tr("Smooth Pedal Response on Hills"), tr("<b>Smoothen acceleration and braking</b> when driving downhill/uphill."), ""},
     {"VoltSNG", tr("Stop-and-Go Hack"), tr("<b>Force stop-and-go</b> on the 2017 Chevy Volt."), ""},
+    {"JeepBrakeHold", tr("Brake Hold (Jeeps Only)"), tr("Hold the brakes after ACC auto-cancels (≈3s SNG limit) and auto-resume when the lead departs. Tip: Intended for Jeep models without full stop-and-go (e.g., 2017 Grand Cherokee)."), ""},
 
     {"HKGToggles", tr("Hyundai/Kia/Genesis Settings"), tr("<b>FrogPilot features for Genesis, Hyundai, and Kia vehicles.</b>"), ""},
     {"NewLongAPI", tr("comma's New Longitudinal API"), tr("<b>comma's new gas and brake control system</b> that improves acceleration and braking but may cause issues on some Genesis/Hyundai/Kia vehicles."), ""},
@@ -250,6 +257,8 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
       std::vector<QString> lockToggles{"LockDoors", "UnlockDoors"};
       std::vector<QString> lockToggleNames{tr("Lock"), tr("Unlock")};
       vehicleToggle = new FrogPilotButtonToggleControl(param, title, desc, icon, lockToggles, lockToggleNames);
+    } else if (param == "JeepBrakeHold") {
+      vehicleToggle = new ParamControl(param, title, desc, icon);
     } else if (param == "LockDoorsTimer") {
       std::map<float, QString> autoLockLabels;
       for (int i = 0; i <= 300; ++i) {
@@ -407,6 +416,8 @@ void FrogPilotVehiclesPanel::updateToggles() {
       setVisible &= parent->isSubaru;
     } else if (toyotaKeys.contains(key)) {
       setVisible &= parent->isToyota;
+    } else if (chryslerKeys.contains(key)) {
+      setVisible &= parent->isJeep;
     } else if (vehicleInfoKeys.contains(key)) {
       setVisible = true;
     }

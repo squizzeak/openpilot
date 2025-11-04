@@ -83,6 +83,7 @@ const CanMsg CHRYSLER_TX_MSGS[] = {
   {CHRYSLER_ADDRS.CRUISE_BUTTONS, 0, 3},
   {CHRYSLER_ADDRS.LKAS_COMMAND, 0, 6},
   {CHRYSLER_ADDRS.DAS_6, 0, 8},
+  {CHRYSLER_ADDRS.DAS_3, 0, 8},
 };
 
 const CanMsg CHRYSLER_RAM_DT_TX_MSGS[] = {
@@ -244,7 +245,9 @@ static bool chrysler_tx_hook(const CANPacket_t *to_send) {
   if ((addr == chrysler_addrs->CRUISE_BUTTONS) || (addr == CHRYSLER_RAM_HD_ADDRS.CRUISE_BUTTONS_ALT)) {
     const bool is_cancel = GET_BYTE(to_send, 0) == 1U;
     const bool is_resume = GET_BYTE(to_send, 0) == 0x10U;
-    const bool allowed = is_cancel || (is_resume && controls_allowed);
+    // Allow RESUME at standstill when ACC main is on, even if controls_allowed is false (e.g., SNG timeout cancel)
+    const bool allow_resume_standstill = is_resume && acc_main_on && !vehicle_moving;
+    const bool allowed = is_cancel || (is_resume && (controls_allowed || allow_resume_standstill));
     if (!allowed) {
       tx = false;
     }
