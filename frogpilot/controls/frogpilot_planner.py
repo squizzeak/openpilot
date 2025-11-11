@@ -27,7 +27,7 @@ class FrogPilotPlanner:
     self.frogpilot_weather = WeatherChecker(self)
 
     self.driving_in_curve = False
-    self.lateral_check = False
+    self.lateral_check = True #False
     self.model_stopped = False
     self.road_curvature_detected = False
     self.slower_lead = False
